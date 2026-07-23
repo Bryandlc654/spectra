@@ -79,4 +79,38 @@ export class EmailService {
   async sendRaw(to: string, subject: string, html: string) {
     await this.send(to, subject, html);
   }
+
+  async sendInvitation(email: string, name: string, inviteUrl: string, tenantName?: string) {
+    const subject = tenantName
+      ? `Invitación a Spectra - Administrador de ${tenantName}`
+      : 'Invitación a Spectra - Crea tu contraseña';
+
+    const html = `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e5e7eb;">
+        <div style="background: #006d70; padding: 28px 32px; text-align: center;">
+          <h1 style="color: #fff; margin: 0; font-size: 22px; font-weight: 700;">Spectra</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 4px 0 0; font-size: 14px;">Invitación de acceso</p>
+        </div>
+        <div style="padding: 32px;">
+          <p style="color: #374151; font-size: 15px; margin: 0 0 16px;">Hola <strong>${name}</strong>,</p>
+          <p style="color: #6b7280; font-size: 14px; margin: 0 0 20px; line-height: 1.6;">
+            Has sido invitado${tenantName ? ` a administrar <strong>${tenantName}</strong>` : ''} en Spectra.
+            Haz clic en el botón de abajo para crear tu contraseña y activar tu cuenta.
+          </p>
+          <a href="${inviteUrl}"
+             style="display: block; background: #006d70; color: #fff; text-decoration: none; text-align: center; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600; margin-bottom: 20px;">
+            Crear mi contraseña
+          </a>
+          <p style="color: #9ca3af; font-size: 12px; margin: 0; line-height: 1.5;">
+            Este enlace expirará en 7 días. Si no esperabas esta invitación, puedes ignorar este mensaje.
+          </p>
+        </div>
+        <div style="background: #f9fafb; padding: 16px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
+          <p style="color: #9ca3af; font-size: 11px; margin: 0;">© ${new Date().getFullYear()} Spectra. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    `;
+
+    await this.send(email, subject, html);
+  }
 }

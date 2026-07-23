@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowPath, HiOutlineClipboardDocument, HiOutlineCheck, HiOutlineMagnifyingGlass } from 'react-icons/hi2';
+import { useState, useEffect, useRef } from 'react';
+import { HiOutlinePencilSquare, HiOutlineTrash, HiOutlineMagnifyingGlass } from 'react-icons/hi2';
 import ConfirmModal from '../../components/ConfirmModal';
 import api from '../../api/axios';
-import { generatePassword, passwordStrength } from '../../utils/password';
 
 interface AdminTenant {
   id: number; name: string; email: string; phone?: string; createdAt: string;
@@ -18,28 +17,13 @@ export default function AdminTenantsList() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<AdminTenant | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', tenantId: 0 });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', tenantId: 0 });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AdminTenant | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [tenantSearch, setTenantSearch] = useState('');
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
   const tenantDropdownRef = useRef<HTMLDivElement>(null);
-
-  const handleGenerate = useCallback(() => {
-    setForm((prev) => ({ ...prev, password: generatePassword() }));
-    setCopied(false);
-  }, []);
-
-  const handleCopy = async () => {
-    if (form.password) {
-      await navigator.clipboard.writeText(form.password);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   const load = async () => {
     const [a, t] = await Promise.all([
@@ -63,13 +47,13 @@ export default function AdminTenantsList() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', email: '', password: generatePassword(), phone: '', tenantId: 0 });
-    setError(''); setCopied(false); setShowForm(true);
+    setForm({ name: '', email: '', phone: '', tenantId: 0 });
+    setError(''); setShowForm(true);
   };
 
   const openEdit = (a: AdminTenant) => {
     setEditing(a);
-    setForm({ name: a.name, email: a.email, password: '', phone: a.phone || '', tenantId: a.tenant?.id || 0 });
+    setForm({ name: a.name, email: a.email, phone: a.phone || '', tenantId: a.tenant?.id || 0 });
     setError(''); setShowForm(true);
   };
 
@@ -78,9 +62,9 @@ export default function AdminTenantsList() {
     try {
       const payload = { name: form.name, email: form.email, phone: form.phone || undefined, tenantId: form.tenantId || undefined };
       if (editing) {
-        await api.put(`/super-admin/admin-tenants/${editing.id}`, { ...payload, ...(form.password ? { password: form.password } : {}) });
+        await api.put(`/super-admin/admin-tenants/${editing.id}`, payload);
       } else {
-        await api.post('/super-admin/admin-tenants', { ...payload, password: form.password });
+        await api.post('/super-admin/admin-tenants', payload);
       }
       setShowForm(false); setEditing(null); load();
     } catch (err: any) {
@@ -113,26 +97,26 @@ export default function AdminTenantsList() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4" onClick={() => setShowForm(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[95vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{editing ? 'Editar admin tenant' : 'Nuevo admin tenant'}</h2>
-                  <p className="text-sm text-gray-500 mt-0.5">{editing ? 'Actualiza los datos del administrador' : 'Registra un nuevo administrador de tenant'}</p>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">{editing ? 'Editar admin tenant' : 'Nuevo admin tenant'}</h2>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{editing ? 'Actualiza los datos del administrador' : 'Registra un nuevo administrador de tenant'}</p>
                 </div>
               </div>
-              <button onClick={() => setShowForm(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+              <button onClick={() => setShowForm(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition shrink-0">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="p-4 sm:p-6 overflow-y-auto">
               {error && (
                 <div className="flex items-center gap-2 bg-red-50 text-red-600 p-3 rounded-xl mb-5 text-sm border border-red-100">
                   <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -181,53 +165,6 @@ export default function AdminTenantsList() {
                           className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white"
                           value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-100 pt-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-1 h-5 bg-gray-300 rounded-full"></div>
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Contraseña</span>
-                  </div>
-                  <div>
-                      <div className="relative">
-                        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                        </svg>
-                        <input type={showPassword ? 'text' : 'password'} placeholder={editing ? 'Dejar vacío' : '••••••••'}
-                          className="w-full pl-9 pr-24 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white font-mono"
-                          value={form.password} onChange={(e) => { setForm({ ...form, password: e.target.value }); setCopied(false); }} />
-                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex gap-0.5">
-                          <button type="button" onClick={() => setShowPassword(!showPassword)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition" title={showPassword ? 'Ocultar' : 'Mostrar'}>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                              {showPassword
-                                ? <><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></>
-                                : <><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></>
-                              }
-                            </svg>
-                          </button>
-                          <button type="button" onClick={handleGenerate}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Generar contraseña">
-                            <HiOutlineArrowPath className="w-4 h-4" />
-                          </button>
-                          <button type="button" onClick={handleCopy}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Copiar">
-                            {copied ? <HiOutlineCheck className="w-4 h-4 text-green-500" /> : <HiOutlineClipboardDocument className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-                      {form.password && (
-                        <div className="mt-2">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-300 ${passwordStrength(form.password).color} ${passwordStrength(form.password).width}`}></div>
-                            </div>
-                            <span className={`text-[11px] font-medium ${passwordStrength(form.password).textColor}`}>{passwordStrength(form.password).label}</span>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -302,13 +239,13 @@ export default function AdminTenantsList() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl shrink-0">
               <button onClick={() => setShowForm(false)}
                 className="px-6 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-white hover:border-gray-300 transition">
                 Cancelar
               </button>
               <button onClick={handleSave} disabled={saving}
-                className="px-6 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition disabled:opacity-60 shadow-lg shadow-primary-200 flex items-center gap-2">
+                className="px-6 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition disabled:opacity-60 shadow-lg shadow-primary-200 flex items-center justify-center gap-2">
                 {saving && (
                   <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

@@ -11,6 +11,7 @@ const Register = React.lazy(() => import('./components/Register'));
 const SignPage = React.lazy(() => import('./components/SignPage'));
 const ForgotPassword = React.lazy(() => import('./components/ForgotPassword'));
 const ResetPassword = React.lazy(() => import('./components/ResetPassword'));
+const AcceptInvitation = React.lazy(() => import('./pages/AcceptInvitation'));
 
 function Suspense({ children }: { children: React.ReactNode }) {
   return <React.Suspense fallback={<div className="flex items-center justify-center h-screen text-primary-500">Cargando...</div>}>{children}</React.Suspense>;
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/register" element={<Suspense><Register /></Suspense>} />
             <Route path="/forgot-password" element={<Suspense><ForgotPassword /></Suspense>} />
             <Route path="/reset-password" element={<Suspense><ResetPassword /></Suspense>} />
+            <Route path="/accept-invitation/:token" element={<Suspense><AcceptInvitation /></Suspense>} />
             <Route
               path="/dashboard"
               element={

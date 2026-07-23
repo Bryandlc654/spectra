@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SuperAdminController } from './super-admin.controller';
 import { SuperAdminService } from './super-admin.service';
@@ -9,7 +10,17 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { KycModule } from '../kyc/kyc.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), EmailModule, TenantsModule, ActivityLogsModule, KycModule],
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    EmailModule,
+    TenantsModule,
+    ActivityLogsModule,
+    KycModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: '7d' },
+    }),
+  ],
   controllers: [SuperAdminController],
   providers: [SuperAdminService],
 })

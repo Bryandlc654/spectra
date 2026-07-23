@@ -73,6 +73,12 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ type: 'text', nullable: true })
+  invitationToken: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  invitationExpires: Date;
+
   @CreateDateColumn()
   createdAt: Date;
 

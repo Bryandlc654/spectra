@@ -33,14 +33,14 @@ export class SuperAdminController {
   }
 
   @Post('admin-tenants')
-  async createAdminTenant(@Req() req: any, @Body() body: { name: string; email: string; password: string; phone?: string; tenantId?: number }) {
+  async createAdminTenant(@Req() req: any, @Body() body: { name: string; email: string; phone?: string; tenantId?: number }) {
     const result = await this.service.createAdminTenant(body);
     logUserAction(this.activityLog, req, 'create', 'admin_tenant', result.id, `Creó admin tenant: ${body.name}`);
     return result;
   }
 
   @Put('admin-tenants/:id')
-  async updateAdminTenant(@Req() req: any, @Param('id') id: string, @Body() body: { name?: string; email?: string; password?: string; phone?: string; tenantId?: number }) {
+  async updateAdminTenant(@Req() req: any, @Param('id') id: string, @Body() body: { name?: string; email?: string; phone?: string; tenantId?: number }) {
     const result = await this.service.updateAdminTenant(+id, body);
     logUserAction(this.activityLog, req, 'update', 'admin_tenant', +id, `Actualizó admin tenant ID ${id}`);
     return result;

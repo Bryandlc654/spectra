@@ -5,12 +5,17 @@ import { UsersService } from '../users/users.service';
 import { UserRole } from '../users/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../users/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -76,6 +81,37 @@ export class AuthService {
       await this.usersService.updatePassword(user.id, hashedPassword);
 
       return { message: 'Contraseña actualizada correctamente' };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      throw new BadRequestException('Token inválido o expirado');
+    }
+  }
+
+  async acceptInvitation(token: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      const payload = this.jwtService.verify(token);
+      if (payload.type !== 'admin_invitation') {
+        throw new BadRequestException('Token inválido');
+      }
+
+      const user = await this.usersService.findByEmail(payload.email);
+      if (!user) {
+        throw new BadRequestException('Usuario no encontrado');
+      }
+      if (!user.invitationToken) {
+        throw new BadRequestException('Invitación ya fue aceptada');
+      }
+      if (user.invitationExpires && new Date(user.invitationExpires) < new Date()) {
+        throw new BadRequestException('Invitación expirada');
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      user.password = hashedPassword;
+      (user as any).invitationToken = null;
+      (user as any).invitationExpires = null;
+      await this.usersRepository.save(user);
+
+      return { message: 'Contraseña creada correctamente. Ya puedes iniciar sesión.' };
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
       throw new BadRequestException('Token inválido o expirado');

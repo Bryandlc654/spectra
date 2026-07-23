@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -15,6 +16,7 @@ export class SuperAdminService {
     private emailService: EmailService,
     private tenantsService: TenantsService,
     private kycService: KycService,
+    private jwtService: JwtService,
   ) {}
 
   async getDashboard() {
@@ -42,19 +44,30 @@ export class SuperAdminService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async createAdminTenant(data: { name: string; email: string; password: string; phone?: string; tenantId?: number }) {
+  async createAdminTenant(data: { name: string; email: string; phone?: string; tenantId?: number }) {
     const existing = await this.usersRepository.findOne({ where: { email: data.email } });
     if (existing) throw new ConflictException('Email already in use');
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const invitationToken = this.jwtService.sign(
+      { sub: 0, email: data.email, type: 'admin_invitation' },
+      { expiresIn: '7d' },
+    );
+    const invitationExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
     const user = this.usersRepository.create({
       name: data.name,
       email: data.email,
-      password: hashedPassword,
+      password: await bcrypt.hash('PENDING', 10),
       phone: data.phone,
       role: UserRole.ADMIN_TENANT,
       tenantId: data.tenantId ?? undefined,
+      invitationToken,
+      invitationExpires,
     } as any);
     const saved: User = await this.usersRepository.save(user) as unknown as User;
+
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const inviteUrl = `${appUrl}/accept-invitation/${invitationToken}`;
 
     let tenantName: string | undefined;
     if (data.tenantId) {
@@ -64,15 +77,14 @@ export class SuperAdminService {
       } catch {}
     }
 
-    await this.emailService.sendCredentials(data.email, data.name, data.password, tenantName);
+    await this.emailService.sendInvitation(data.email, data.name, inviteUrl, tenantName);
     await this.kycService.create(saved.id, 'admin_tenant');
     return saved;
   }
 
-  async updateAdminTenant(id: number, data: { name?: string; email?: string; password?: string; phone?: string; tenantId?: number }) {
+  async updateAdminTenant(id: number, data: { name?: string; email?: string; phone?: string; tenantId?: number }) {
     const user = await this.usersRepository.findOne({ where: { id, role: UserRole.ADMIN_TENANT } });
     if (!user) throw new NotFoundException('Admin tenant not found');
-    if (data.password) data.password = await bcrypt.hash(data.password, 10);
     Object.assign(user, data);
     return this.usersRepository.save(user);
   }
