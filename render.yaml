@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: spectra-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: DB_HOST
+        value: 193.203.175.226
+      - key: DB_PORT
+        value: 3306
+      - key: DB_USERNAME
+        value: u560058480_spectrajul
+      - key: DB_PASSWORD
+        value: W6c!a4En>
+      - key: DB_DATABASE
+        value: u560058480_spectrajul
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: 24h
+      - key: NODE_ENV
+        value: production
