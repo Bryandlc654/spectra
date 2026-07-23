@@ -21,6 +21,9 @@ export default function AdminTenantsList() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AdminTenant | null>(null);
+  const [search, setSearch] = useState('');
+  const [filterTenantId, setFilterTenantId] = useState(0);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [tenantSearch, setTenantSearch] = useState('');
   const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
   const tenantDropdownRef = useRef<HTMLDivElement>(null);
@@ -86,12 +89,45 @@ export default function AdminTenantsList() {
     t.name.toLowerCase().includes(tenantSearch.toLowerCase())
   );
 
+  const displayedAdmins = admins.filter((a) => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!a.name.toLowerCase().includes(q) && !a.email.toLowerCase().includes(q)) return false;
+    }
+    if (filterTenantId) {
+      if (a.tenant?.id !== filterTenantId) return false;
+    }
+    if (filterStatus !== 'all') {
+      if (!a.tenant) return false;
+      if (filterStatus === 'active' && a.tenant.status !== 'active') return false;
+      if (filterStatus === 'inactive' && a.tenant.status !== 'inactive') return false;
+    }
+    return true;
+  });
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Admin Tenants</h1>
 
       <div className="flex flex-wrap items-center gap-3 mb-5">
-        <button onClick={openCreate} className="ml-auto bg-primary-500 text-white px-4 py-2.5 rounded-xl hover:bg-primary-600 transition text-sm font-medium shadow-md shadow-primary-200 shrink-0">
+        <div className="relative flex-1 min-w-[200px]">
+          <HiOutlineMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input type="text" placeholder="Buscar por nombre o email..."
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-white"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <select value={filterTenantId} onChange={(e) => setFilterTenantId(+e.target.value)}
+          className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-white text-gray-700">
+          <option value={0}>Todos los tenants</option>
+          {tenants.map((t) => <option key={t.id} value={t.id}>{t.businessName}</option>)}
+        </select>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+          className="px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-white text-gray-700">
+          <option value="all">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="inactive">Inactivo</option>
+        </select>
+        <button onClick={openCreate} className="bg-primary-500 text-white px-4 py-2.5 rounded-xl hover:bg-primary-600 transition text-sm font-medium shadow-md shadow-primary-200 shrink-0">
           + Nuevo admin
         </button>
       </div>
@@ -272,7 +308,7 @@ export default function AdminTenantsList() {
             </tr>
           </thead>
           <tbody>
-            {admins.map((a) => (
+            {displayedAdmins.map((a) => (
               <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                 <td className="px-4 py-3 font-medium text-gray-800">{a.name}</td>
                 <td className="px-4 py-3 text-gray-600">{a.email}</td>
@@ -306,8 +342,10 @@ export default function AdminTenantsList() {
                 </td>
               </tr>
             ))}
-            {admins.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No hay admin tenants registrados</td></tr>
+            {displayedAdmins.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                {admins.length === 0 ? 'No hay admin tenants registrados' : 'No se encontraron resultados con esos filtros'}
+              </td></tr>
             )}
           </tbody>
         </table>
