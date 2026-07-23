@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowPath, HiOutlineClipboardDocument, HiOutlineCheck } from 'react-icons/hi2';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowPath, HiOutlineClipboardDocument, HiOutlineCheck, HiOutlineMagnifyingGlass } from 'react-icons/hi2';
 import ConfirmModal from '../../components/ConfirmModal';
 import api from '../../api/axios';
 import { generatePassword, passwordStrength } from '../../utils/password';
@@ -24,6 +24,9 @@ export default function AdminTenantsList() {
   const [deleteTarget, setDeleteTarget] = useState<AdminTenant | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [tenantSearch, setTenantSearch] = useState('');
+  const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
+  const tenantDropdownRef = useRef<HTMLDivElement>(null);
 
   const handleGenerate = useCallback(() => {
     setForm((prev) => ({ ...prev, password: generatePassword() }));
@@ -47,6 +50,16 @@ export default function AdminTenantsList() {
     setTenants(t.data.data);
   };
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (tenantDropdownRef.current && !tenantDropdownRef.current.contains(e.target as Node)) {
+        setTenantDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -84,6 +97,10 @@ export default function AdminTenantsList() {
   };
 
   const selectedTenant = tenants.find((t) => t.id === form.tenantId);
+  const filteredTenants = tenants.filter((t) =>
+    t.businessName.toLowerCase().includes(tenantSearch.toLowerCase()) ||
+    t.name.toLowerCase().includes(tenantSearch.toLowerCase())
+  );
 
   return (
     <div>
@@ -219,13 +236,48 @@ export default function AdminTenantsList() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Seleccionar tenant</label>
-                    <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white appearance-none"
-                      value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: Number(e.target.value) })}>
-                      <option value={0}>Sin tenant asignado</option>
-                      {tenants.map((t) => (
-                        <option key={t.id} value={t.id}>{t.businessName} ({t.name})</option>
-                      ))}
-                    </select>
+                    <div className="relative" ref={tenantDropdownRef}>
+                      <button type="button" onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-left focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white flex items-center justify-between">
+                        <span className={selectedTenant ? 'text-gray-800' : 'text-gray-400'}>
+                          {selectedTenant ? `${selectedTenant.businessName} (${selectedTenant.name})` : 'Sin tenant asignado'}
+                        </span>
+                        <svg className={`w-4 h-4 text-gray-400 transition ${tenantDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {tenantDropdownOpen && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-hidden">
+                          <div className="p-2 border-b border-gray-100">
+                            <div className="relative">
+                              <HiOutlineMagnifyingGlass className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              <input type="text" placeholder="Buscar tenant..."
+                                className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-primary-500"
+                                value={tenantSearch} onChange={(e) => setTenantSearch(e.target.value)}
+                                autoFocus />
+                            </div>
+                          </div>
+                          <div className="overflow-y-auto max-h-48">
+                            <button type="button"
+                              onClick={() => { setForm({ ...form, tenantId: 0 }); setTenantDropdownOpen(false); setTenantSearch(''); }}
+                              className={`w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition ${form.tenantId === 0 ? 'bg-primary-50 text-primary-700' : 'text-gray-500'}`}>
+                              Sin tenant asignado
+                            </button>
+                            {filteredTenants.map((t) => (
+                              <button key={t.id} type="button"
+                                onClick={() => { setForm({ ...form, tenantId: t.id }); setTenantDropdownOpen(false); setTenantSearch(''); }}
+                                className={`w-full px-4 py-2.5 text-sm text-left hover:bg-gray-50 transition ${form.tenantId === t.id ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}`}>
+                                <p className="font-medium">{t.businessName}</p>
+                                <p className="text-xs text-gray-400">{t.name}</p>
+                              </button>
+                            ))}
+                            {filteredTenants.length === 0 && (
+                              <div className="px-4 py-3 text-sm text-gray-400 text-center">No se encontraron tenants</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     {selectedTenant && (
                       <div className="mt-2 flex items-center gap-2 text-xs bg-primary-50 text-primary-700 px-3 py-2 rounded-lg border border-primary-100">
                         <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
