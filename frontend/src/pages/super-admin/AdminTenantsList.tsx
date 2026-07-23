@@ -148,7 +148,7 @@ export default function AdminTenantsList() {
                     <div className="w-1 h-5 bg-primary-500 rounded-full"></div>
                     <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Datos del administrador</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Nombre <span className="text-red-400">*</span></label>
                       <div className="relative">
@@ -171,8 +171,6 @@ export default function AdminTenantsList() {
                           value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                       </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mt-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
                       <div className="relative">
@@ -184,10 +182,15 @@ export default function AdminTenantsList() {
                           value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {editing ? 'Nueva contraseña' : 'Contraseña'} <span className="text-red-400">*</span>
-                      </label>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-1 h-5 bg-gray-300 rounded-full"></div>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Contraseña</span>
+                  </div>
+                  <div>
                       <div className="relative">
                         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
