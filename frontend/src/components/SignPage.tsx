@@ -1,13 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { HiOutlineCheckCircle, HiOutlineDocumentText, HiOutlineExclamationCircle } from 'react-icons/hi2';
-import api from '../api/axios';
+import { signatureService } from '../services/api';
+import type { SignerResponse, Signer } from '../types';
 
 const SAVED_SIG_KEY = 'spectra_saved_signature';
 
+interface CanvasEvent extends MouseEvent {
+  clientX: number;
+  clientY: number;
+}
+
+interface TouchEvent extends globalThis.TouchEvent {
+  touches: TouchList;
+}
+
 export default function SignPage() {
-  const { token } = useParams();
-  const [signer, setSigner] = useState<any>(null);
+  const { token } = useParams<{ token: string }>();
+  const [signer, setSigner] = useState<SignerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
   const [done, setDone] = useState(false);
@@ -24,7 +34,11 @@ export default function SignPage() {
   const savedSig = localStorage.getItem(SAVED_SIG_KEY);
 
   useEffect(() => {
-    if (token) api.get(`/signatures/token/${token}`).then((r) => { setSigner(r.data); setLoading(false); }).catch(() => setLoading(false));
+    if (token) {
+      signatureService.getByToken(token)
+        .then((data) => { setSigner(data); setLoading(false); })
+        .catch(() => setLoading(false));
+    }
   }, [token]);
 
   useEffect(() => {
@@ -36,19 +50,19 @@ export default function SignPage() {
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
 
-    const getPos = (e: any) => {
+    const getPos = (e: CanvasEvent | TouchEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-      const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+      const clientX = 'clientX' in e ? e.clientX : e.touches?.[0]?.clientX ?? 0;
+      const clientY = 'clientY' in e ? e.clientY : e.touches?.[0]?.clientY ?? 0;
       return { x: clientX - rect.left, y: clientY - rect.top };
     };
-    const start = (e: any) => {
+    const start = (e: CanvasEvent | TouchEvent) => {
       isDrawing.current = true;
       const { x, y } = getPos(e);
       ctx.beginPath();
       ctx.moveTo(x, y);
     };
-    const draw = (e: any) => {
+    const draw = (e: CanvasEvent | TouchEvent) => {
       if (!isDrawing.current) return;
       const { x, y } = getPos(e);
       ctx.lineTo(x, y);
@@ -56,19 +70,19 @@ export default function SignPage() {
     };
     const end = () => { isDrawing.current = false; };
 
-    canvas.addEventListener('mousedown', start);
-    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mousedown', start as EventListener);
+    canvas.addEventListener('mousemove', draw as EventListener);
     canvas.addEventListener('mouseup', end);
-    canvas.addEventListener('touchstart', start, { passive: true });
-    canvas.addEventListener('touchmove', draw, { passive: true });
+    canvas.addEventListener('touchstart', start as EventListener, { passive: true });
+    canvas.addEventListener('touchmove', draw as EventListener, { passive: true });
     canvas.addEventListener('touchend', end);
 
     return () => {
-      canvas.removeEventListener('mousedown', start);
-      canvas.removeEventListener('mousemove', draw);
+      canvas.removeEventListener('mousedown', start as EventListener);
+      canvas.removeEventListener('mousemove', draw as EventListener);
       canvas.removeEventListener('mouseup', end);
-      canvas.removeEventListener('touchstart', start);
-      canvas.removeEventListener('touchmove', draw);
+      canvas.removeEventListener('touchstart', start as EventListener);
+      canvas.removeEventListener('touchmove', draw as EventListener);
       canvas.removeEventListener('touchend', end);
     };
   }, [signer]);
@@ -80,7 +94,7 @@ export default function SignPage() {
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  const getSignatureData = () => {
+  const getSignatureData = (): string | undefined => {
     if (useSaved && savedSig) return savedSig;
     if (mode === 'type' && typedName.trim()) {
       const canvas = document.createElement('canvas');
@@ -108,18 +122,19 @@ export default function SignPage() {
 
   const handleSign = async () => {
     const signature = getSignatureData();
-    if (!signature) { setError('Por dibuja o escribe tu firma primero'); return; }
+    if (!signature) { setError('Por favor dibuja o escribe tu firma primero'); return; }
     setSigning(true); setError('');
     try {
-      await api.post(`/signatures/token/${token}/sign`, {
+      await signatureService.sign(token!, {
         signature,
         x: sigPos ? Math.round(sigPos.x) : undefined,
         y: sigPos ? Math.round(sigPos.y) : undefined,
       });
       localStorage.setItem(SAVED_SIG_KEY, signature);
       setDone(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al firmar');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al firmar';
+      setError(message);
     } finally { setSigning(false); }
   };
 
@@ -135,10 +150,10 @@ export default function SignPage() {
   );
   if (!signer || !signer.document) return <div className="min-h-screen flex items-center justify-center text-gray-500">Enlace inválido o expirado</div>;
 
-  const allSigners = signer.document?.signers || [];
-  const sortedSigners = [...allSigners].sort((a: any, b: any) => a.signOrder - b.signOrder);
-  const myIndex = sortedSigners.findIndex((s: any) => s.id === signer.id);
-  const prevSigner = myIndex > 0 ? sortedSigners[myIndex - 1] : null;
+  const allSigners: Signer[] = signer.document?.signers || [];
+  const sortedSigners = [...allSigners].sort((a, b) => a.signOrder - b.signOrder);
+  const myIndex = sortedSigners.findIndex((s) => s.id === signer.id);
+  const prevSigner: Signer | null = myIndex > 0 ? sortedSigners[myIndex - 1] : null;
   const prevSigned = prevSigner ? prevSigner.hasSigned : true;
 
   return (
@@ -171,7 +186,7 @@ export default function SignPage() {
 
             {sortedSigners.length > 1 && (
               <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
-                {sortedSigners.map((s: any) => (
+                {sortedSigners.map((s) => (
                   <div key={s.id} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap ${
                     s.id === signer.id ? 'bg-primary-100 text-primary-700 font-medium' :
                     s.hasSigned ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'

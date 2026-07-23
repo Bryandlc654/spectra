@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { HiOutlineHome, HiOutlineDocumentText, HiOutlineChevronDoubleLeft, HiOutlineChevronDoubleRight } from 'react-icons/hi2';
-import api from '../../api/axios';
+import { useSearchParams } from 'react-router-dom';
+import { HiOutlineHome, HiOutlineDocumentText } from 'react-icons/hi2';
+import AdminSidebar from '../../components/AdminSidebar';
+import { downloadPdf } from '../../utils/pdf';
+import { freelanceService, contractService } from '../../services/api';
+import type { FreelanceProfile, Contract } from '../../types';
 
 function FreelanceDashboard() {
-  const [profile, setProfile] = useState<any>(null);
-  useEffect(() => { api.get('/freelance/profile').then((r) => setProfile(r.data.profile)); }, []);
+  const [profile, setProfile] = useState<FreelanceProfile | null>(null);
+  useEffect(() => { freelanceService.profile().then(setProfile); }, []);
   if (!profile) return <div className="text-primary-500">Cargando...</div>;
   return (
     <div>
@@ -24,8 +28,8 @@ function FreelanceDashboard() {
 }
 
 function MyContracts() {
-  const [contracts, setContracts] = useState<any[]>([]);
-  useEffect(() => { api.get('/contracts').then((r) => setContracts(r.data)); }, []);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  useEffect(() => { contractService.list().then(setContracts); }, []);
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-4">Mis Contratos</h1>
@@ -40,7 +44,7 @@ function MyContracts() {
                   <h3 className="font-semibold text-gray-800">{c.title}</h3>
                   <p className="text-xs text-gray-400 mt-0.5">{c.tenantName} · {new Date(c.createdAt).toLocaleDateString('es')}</p>
                 </div>
-                <button onClick={async () => { try { const r = await api.get(`/contracts/${c.id}/pdf`, { responseType: 'blob' }); const url = URL.createObjectURL(r.data); const a = document.createElement('a'); a.href = url; a.download = `contrato-${c.id}.pdf`; a.click(); URL.revokeObjectURL(url); } catch {} }}
+                <button onClick={() => downloadPdf(`/contracts/${c.id}/pdf`, `contrato-${c.id}.pdf`)}
                   className="px-4 py-2 bg-primary-500 text-white rounded-xl text-xs font-medium hover:bg-primary-600 transition shadow-md">
                   PDF
                 </button>
@@ -59,8 +63,11 @@ const modules = [
 ];
 
 export default function FreelancePanel() {
-  const [active, setActive] = useState('dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const active = searchParams.get('tab') || 'dashboard';
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const setActive = (key: string) => setSearchParams({ tab: key });
 
   const renderModule = () => {
     switch (active) {
@@ -72,37 +79,10 @@ export default function FreelancePanel() {
 
   return (
     <div>
-
-      <div className="flex">
-        <aside className={`fixed left-0 top-16 bottom-0 z-40 bg-white shadow-sm transition-all duration-300 flex flex-col ${sidebarOpen ? 'w-60' : 'w-16'}`}>
-          <div className={`flex items-center h-14 px-3 border-b border-gray-100 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
-            {sidebarOpen && <div></div>}
-            <button onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition">
-              {sidebarOpen ? <HiOutlineChevronDoubleLeft className="w-3.5 h-3.5" /> : <HiOutlineChevronDoubleRight className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-          <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
-            {modules.map((m) => {
-              const Icon = m.icon;
-              const isActive = active === m.key;
-              return (
-                <button key={m.key} onClick={() => setActive(m.key)}
-                  className={`relative w-full flex items-center gap-3 text-sm font-medium transition-all duration-200 whitespace-nowrap
-                    ${sidebarOpen ? 'px-3 py-2.5 rounded-xl' : 'justify-center py-3 rounded-xl'}
-                    ${isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
-                  {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary-500 rounded-full"></span>}
-                  <Icon className="w-5 h-5 shrink-0" />
-                  {sidebarOpen && <span className="truncate">{m.label}</span>}
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-        <main className={`flex-1 transition-all duration-300 p-4 sm:p-6 ${sidebarOpen ? 'ml-60' : 'ml-16'}`}>
-          {renderModule()}
-        </main>
-      </div>
+      <AdminSidebar modules={modules} active={active} onSelect={setActive} open={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <main className={`flex-1 transition-all duration-300 p-4 sm:p-6 ${sidebarOpen ? 'ml-60' : 'ml-16'}`}>
+        {renderModule()}
+      </main>
     </div>
   );
 }

@@ -1,56 +1,135 @@
 import { useState, useEffect } from 'react';
 import { HiOutlineDocumentText, HiOutlineEye, HiOutlineTrash } from 'react-icons/hi2';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import ConfirmModal from '../../components/ConfirmModal';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
+import { downloadPdf } from '../../utils/pdf';
+import { contractService } from '../../services/api';
+import type { Contract, ContractTemplate } from '../../types';
 
-interface Contract {
-  id: number; title: string; content: string; status: string;
-  tenantUserId: number; tenantName?: string;
-  freelancerUserId: number; freelancerName?: string;
-  startDate?: string; endDate?: string; amount?: number;
-  template?: { id: number; name: string };
-  createdAt: string;
+const contractSchema = z.object({
+  templateId: z.number().min(1, 'Selecciona una plantilla'),
+  freelancerUserId: z.number().min(1, 'Selecciona un freelancer'),
+  title: z.string().min(3, 'El título debe tener al menos 3 caracteres'),
+  description: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  amount: z.string().optional(),
+});
+
+type ContractFormData = z.infer<typeof contractSchema>;
+
+interface FreelancerOption { id: number; name: string; }
+
+function ContractForm({ form, setForm, onSubmit, onCancel, templates, freelancers }: {
+  form: ContractFormData;
+  setForm: React.Dispatch<React.SetStateAction<ContractFormData>>;
+  onSubmit: () => void;
+  onCancel: () => void;
+  templates: ContractTemplate[];
+  freelancers: FreelancerOption[];
+}) {
+  const { register, handleSubmit, formState: { errors } } = useForm<ContractFormData>({
+    resolver: zodResolver(contractSchema),
+    defaultValues: form,
+  });
+
+  const onSubmitHandler = () => onSubmit();
+
+  return (
+    <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-3">
+      <div>
+        <select {...register('templateId', { valueAsNumber: true })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white">
+          <option value={0}>Seleccionar plantilla</option>
+          {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        {errors.templateId && <p className="text-xs text-red-500 mt-1">{errors.templateId.message}</p>}
+      </div>
+      <div>
+        <select {...register('freelancerUserId', { valueAsNumber: true })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white">
+          <option value={0}>Seleccionar freelancer</option>
+          {freelancers.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
+        {errors.freelancerUserId && <p className="text-xs text-red-500 mt-1">{errors.freelancerUserId.message}</p>}
+      </div>
+      <div>
+        <input {...register('title')} placeholder="Título del contrato" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+        {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>}
+      </div>
+      <input {...register('description')} placeholder="Descripción del servicio" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+      <div className="grid grid-cols-2 gap-3">
+        <input type="date" {...register('startDate')} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+        <input type="date" {...register('endDate')} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+      </div>
+      <input type="number" {...register('amount')} placeholder="Monto $" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+      <div className="flex gap-3 pt-2">
+        <button type="button" onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancelar</button>
+        <button type="submit" className="flex-1 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition shadow-md">Crear contrato</button>
+      </div>
+    </form>
+  );
 }
 
 export default function Contracts() {
   const { user } = useAuth();
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [templates, setTemplates] = useState<{ id: number; name: string }[]>([]);
-  const [freelancers, setFreelancers] = useState<{ id: number; name: string }[]>([]);
+  const [templates, setTemplates] = useState<ContractTemplate[]>([]);
+  const [freelancers, setFreelancers] = useState<FreelancerOption[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ templateId: 0, freelancerUserId: 0, title: '', description: '', startDate: '', endDate: '', amount: '' });
+  const [form, setForm] = useState<ContractFormData>({ templateId: 0, freelancerUserId: 0, title: '', description: '', startDate: '', endDate: '', amount: '' });
   const [selected, setSelected] = useState<Contract | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Contract | null>(null);
 
   const isAdminTenant = user?.role === 'admin_tenant';
 
-  const load = () => {
-    api.get('/contracts').then((r) => setContracts(r.data));
-    api.get('/contracts/templates').then((r) => setTemplates(r.data.filter((t: any) => t.isActive)));
-    api.get('/super-admin/freelancers').then((r) => setFreelancers(r.data.data));
+  const load = async () => {
+    try {
+      const [contractsData, templatesData, freelancersData] = await Promise.all([
+        contractService.list(),
+        contractService.templates(),
+        api.get('/super-admin/freelancers').then((r) => r.data.data),
+      ]);
+      setContracts(contractsData);
+      setTemplates(templatesData.filter((t) => t.isActive));
+      setFreelancers(freelancersData);
+    } catch (err) {
+      console.error('Error loading contracts:', err);
+    }
   };
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setForm({ templateId: 0, freelancerUserId: 0, title: '', description: '', startDate: '', endDate: '', amount: '' }); setShowForm(true); };
 
-  const handleCreate = async () => {
+  const handleCreate = async (data: ContractFormData) => {
     try {
-      const fr = freelancers.find((f) => f.id === form.freelancerUserId);
-      await api.post('/contracts', {
-        templateId: form.templateId, freelancerUserId: form.freelancerUserId,
-        freelancerName: fr?.name, title: form.title,
-        startDate: form.startDate || undefined, endDate: form.endDate || undefined,
-        amount: form.amount ? Number(form.amount) : undefined,
-        customData: { description: form.description },
+      const fr = freelancers.find((f) => f.id === data.freelancerUserId);
+      await contractService.create({
+        templateId: data.templateId,
+        freelancerUserId: data.freelancerUserId,
+        freelancerName: fr?.name,
+        title: data.title,
+        description: data.description,
+        startDate: data.startDate || undefined,
+        endDate: data.endDate || undefined,
+        amount: data.amount ? Number(data.amount) : undefined,
       });
       setShowForm(false); load();
-    } catch {}
+    } catch (err) {
+      console.error('Error creating contract:', err);
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    try { await api.delete(`/contracts/${deleteTarget.id}`); setDeleteTarget(null); load(); } catch {}
+    try {
+      await contractService.delete(deleteTarget.id);
+      setDeleteTarget(null); load();
+    } catch (err) {
+      console.error('Error deleting contract:', err);
+    }
   };
 
   const statusBadge = (s: string) => {
@@ -97,7 +176,7 @@ export default function Contracts() {
               </div>
               <div className="flex gap-1 ml-4 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <button onClick={() => setSelected(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Vista previa"><HiOutlineEye className="w-4 h-4" /></button>
-                <button onClick={async () => { try { const r = await api.get(`/contracts/${c.id}/pdf`, { responseType: 'blob' }); const url = URL.createObjectURL(r.data); const a = document.createElement('a'); a.href = url; a.download = `contrato-${c.id}.pdf`; a.click(); URL.revokeObjectURL(url); } catch {} }}
+                <button onClick={() => downloadPdf(`/contracts/${c.id}/pdf`, `contrato-${c.id}.pdf`)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Descargar PDF">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -115,27 +194,14 @@ export default function Contracts() {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Nuevo contrato</h2>
-            <div className="space-y-3">
-              <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" value={form.templateId} onChange={(e) => setForm({ ...form, templateId: Number(e.target.value) })}>
-                <option value={0}>Seleccionar plantilla</option>
-                {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-              <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" value={form.freelancerUserId} onChange={(e) => setForm({ ...form, freelancerUserId: Number(e.target.value) })}>
-                <option value={0}>Seleccionar freelancer</option>
-                {freelancers.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-              <input placeholder="Título del contrato" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-              <input placeholder="Descripción del servicio" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-              <div className="grid grid-cols-2 gap-3">
-                <input type="date" placeholder="Inicio" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
-                <input type="date" placeholder="Fin" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
-              </div>
-              <input type="number" placeholder="Monto $" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancelar</button>
-                <button onClick={handleCreate} className="flex-1 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition shadow-md">Crear contrato</button>
-              </div>
-            </div>
+            <ContractForm
+              form={form}
+              setForm={setForm}
+              onSubmit={handleCreate}
+              onCancel={() => setShowForm(false)}
+              templates={templates}
+              freelancers={freelancers}
+            />
           </div>
         </div>
       )}
@@ -149,7 +215,7 @@ export default function Contracts() {
                 <p className="text-sm text-gray-500">{selected.freelancerName || `Freelancer #${selected.freelancerUserId}`}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={async () => { try { const r = await api.get(`/contracts/${selected.id}/pdf`, { responseType: 'blob' }); const url = URL.createObjectURL(r.data); const a = document.createElement('a'); a.href = url; a.download = `contrato-${selected.id}.pdf`; a.click(); URL.revokeObjectURL(url); } catch {} }}
+                <button onClick={() => downloadPdf(`/contracts/${selected.id}/pdf`, `contrato-${selected.id}.pdf`)}
                   className="px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition shadow-md flex items-center gap-2">
                   <HiOutlineDocumentText className="w-4 h-4" /> PDF
                 </button>
@@ -164,9 +230,9 @@ export default function Contracts() {
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl shrink-0">
               {selected.status === 'draft' && (
                 <>
-                  <button onClick={async () => { await api.put(`/contracts/${selected.id}/status`, { status: 'cancelled' }); setSelected(null); load(); }}
+                  <button onClick={async () => { try { await contractService.updateStatus(selected.id, 'cancelled'); setSelected(null); load(); } catch (err) { console.error('Error cancelling contract:', err); } }}
                     className="px-4 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition">Cancelar contrato</button>
-                  <button onClick={async () => { await api.put(`/contracts/${selected.id}/status`, { status: 'signed' }); setSelected(null); load(); }}
+                  <button onClick={async () => { try { await contractService.updateStatus(selected.id, 'signed'); setSelected(null); load(); } catch (err) { console.error('Error signing contract:', err); } }}
                     className="px-4 py-2.5 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition shadow-md">Firmar contrato</button>
                 </>
               )}

@@ -1,34 +1,43 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
-import Login from './components/Login';
-import Register from './components/Register';
 import DashboardRouter from './components/DashboardRouter';
-import SignPage from './components/SignPage';
+
+const Login = React.lazy(() => import('./components/Login'));
+const Register = React.lazy(() => import('./components/Register'));
+const SignPage = React.lazy(() => import('./components/SignPage'));
+
+function Suspense({ children }: { children: React.ReactNode }) {
+  return <React.Suspense fallback={<div className="flex items-center justify-center h-screen text-primary-500">Cargando...</div>}>{children}</React.Suspense>;
+}
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<DashboardRouter />} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Suspense><Login /></Suspense>} />
+            <Route path="/register" element={<Suspense><Register /></Suspense>} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<DashboardRouter />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Route>
+            <Route path="/sign/:token" element={<Suspense><SignPage /></Suspense>} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Route>
-          <Route path="/sign/:token" element={<SignPage />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

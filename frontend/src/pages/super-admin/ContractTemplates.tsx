@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { HiOutlinePencilSquare, HiOutlineTrash, HiOutlinePlus, HiOutlineEye, HiOutlineArrowDownTray } from 'react-icons/hi2';
 import ConfirmModal from '../../components/ConfirmModal';
 import api from '../../api/axios';
+import { downloadPdf } from '../../utils/pdf';
 
 interface Template {
   id: number; name: string; content: string; isActive: boolean; createdAt: string;
@@ -79,7 +80,7 @@ export default function ContractTemplates() {
               </div>
               <div className="flex gap-1 ml-4 shrink-0">
                 <button onClick={() => setPreview(t)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Vista previa"><HiOutlineEye className="w-4 h-4" /></button>
-                <button onClick={async () => { try { const r = await api.get(`/contracts/templates/${t.id}/pdf`, { responseType: 'blob' }); const url = URL.createObjectURL(r.data); const a = document.createElement('a'); a.href = url; a.download = `${t.name}.pdf`; a.click(); URL.revokeObjectURL(url); } catch {} }}
+                <button onClick={() => downloadPdf(`/contracts/templates/${t.id}/pdf`, `${t.name}.pdf`)}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Descargar PDF">
                   <HiOutlineArrowDownTray className="w-4 h-4" />
                 </button>

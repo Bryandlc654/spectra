@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineComputerDesktop, HiOutlineClock } from 'react-icons/hi2';
-import api from '../../api/axios';
-
-interface SessionLog {
-  id: number; userId: number; userName?: string; userRole?: string;
-  ipAddress?: string; userAgent?: string; createdAt: string;
-}
+import { sessionLogService } from '../../services/api';
+import type { SessionLog } from '../../types';
 
 export default function SessionLogs() {
   const [logs, setLogs] = useState<SessionLog[]>([]);
@@ -17,11 +13,13 @@ export default function SessionLogs() {
   const load = async () => {
     setFetching(true);
     try {
-      const { data } = await api.get(`/session-logs?page=${page}&limit=50`);
-      setLogs(data.data);
-      setTotalPages(data.totalPages);
-      setTotal(data.total);
-    } catch {} finally { setFetching(false); }
+      const result = await sessionLogService.list(page, 50);
+      setLogs(result.data);
+      setTotalPages(result.totalPages);
+      setTotal(result.total);
+    } catch (err) {
+      console.error('Error loading session logs:', err);
+    } finally { setFetching(false); }
   };
 
   useEffect(() => { load(); }, [page]);
