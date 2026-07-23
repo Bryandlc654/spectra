@@ -301,8 +301,6 @@ export default function Tenants() {
             <tr className="text-left text-gray-500 border-b bg-gray-50">
               <th className="px-4 py-3">#</th>
               <th className="px-4 py-3">Nombre Comercial</th>
-              <th className="px-4 py-3">RUC</th>
-              <th className="px-4 py-3">Razón Social</th>
               <th className="px-4 py-3">País</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3">Admin</th>
@@ -315,8 +313,6 @@ export default function Tenants() {
               <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                 <td className="px-4 py-3 text-gray-400 text-xs font-mono">{String(i + 1).padStart(2, '0')}</td>
                 <td className="px-4 py-3 font-medium text-gray-800">{t.name}</td>
-                <td className="px-4 py-3 text-gray-600 font-mono text-xs">{t.taxId || '—'}</td>
-                <td className="px-4 py-3 text-gray-600">{t.businessName}</td>
                 <td className="px-4 py-3 text-gray-600">{t.country || '—'}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${t.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
