@@ -215,45 +215,38 @@ export default function ManagedUsers() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
-          <thead>
-            <tr className="text-left text-gray-500 border-b bg-gray-50">
-              <th className="px-4 py-3">Nombre</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Rol</th>
-              <th className="px-4 py-3">Estado</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => (
-              <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                <td className="px-4 py-3 font-medium text-gray-800">{u.name}</td>
-                <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                <td className="px-4 py-3">
-                  <span className="bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full text-xs">{u.role?.name}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <button onClick={() => toggleActive(u)} className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {u.isActive ? 'Activo' : 'Inactivo'}
-                  </button>
-                </td>
-                <td className="px-4 py-3">
-                  <button onClick={() => openEdit(u)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Editar">
-                    <HiOutlinePencilSquare className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setDeleteTarget(u)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Eliminar">
-                    <HiOutlineTrash className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {users.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No hay usuarios del sistema</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="divide-y divide-gray-50">
+          {users.map((u) => (
+            <div key={u.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50/50 transition">
+              <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-sm shrink-0">
+                {u.name?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-800 text-sm truncate">{u.name}</p>
+                  <span className="bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full text-[11px] font-medium">{u.role?.name}</span>
+                </div>
+                <p className="text-xs text-gray-400 truncate">{u.email}</p>
+              </div>
+              <button onClick={() => toggleActive(u)}
+                className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {u.isActive ? 'Activo' : 'Inactivo'}
+              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => openEdit(u)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Editar">
+                  <HiOutlinePencilSquare className="w-4 h-4" />
+                </button>
+                <button onClick={() => setDeleteTarget(u)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title="Eliminar">
+                  <HiOutlineTrash className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+          {users.length === 0 && (
+            <div className="px-5 py-12 text-center text-gray-400 text-sm">No hay usuarios del sistema</div>
+          )}
+        </div>
       </div>
 
       <ConfirmModal
