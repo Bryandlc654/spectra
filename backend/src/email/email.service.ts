@@ -1,28 +1,39 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend | null = null;
+  private apiKey: string | undefined;
   private from: string;
 
   constructor() {
-    const apiKey = process.env.RESEND_API_KEY;
+    this.apiKey = process.env.RESEND_API_KEY;
     this.from = process.env.RESEND_FROM || 'noreply@spectra.com';
-    if (apiKey) {
-      this.resend = new Resend(apiKey);
-    } else {
+    if (!this.apiKey) {
       this.logger.warn('RESEND_API_KEY not configured');
     }
   }
 
-  async sendCredentials(email: string, name: string, password: string, tenantName?: string) {
-    if (!this.resend) {
+  private async send(to: string, subject: string, html: string) {
+    if (!this.apiKey) {
       this.logger.error('Resend not configured');
       return;
     }
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ from: this.from, to, subject, html }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      this.logger.error(`Resend error: ${err}`);
+    }
+  }
 
+  async sendCredentials(email: string, name: string, password: string, tenantName?: string) {
     const subject = tenantName
       ? `Bienvenido a Spectra - Acceso como administrador de ${tenantName}`
       : 'Bienvenido a Spectra - Acceso al panel';
@@ -62,27 +73,10 @@ export class EmailService {
       </div>
     `;
 
-    try {
-      await this.resend!.emails.send({
-        from: this.from,
-        to: email,
-        subject,
-        html,
-      });
-    } catch (err) {
-      this.logger.error('Failed to send email:', err);
-    }
+    await this.send(email, subject, html);
   }
 
   async sendRaw(to: string, subject: string, html: string) {
-    if (!this.resend) {
-      this.logger.error('Resend not configured');
-      return;
-    }
-    try {
-      await this.resend!.emails.send({ from: this.from, to, subject, html });
-    } catch (err) {
-      this.logger.error('Failed to send email:', err);
-    }
+    await this.send(to, subject, html);
   }
 }
