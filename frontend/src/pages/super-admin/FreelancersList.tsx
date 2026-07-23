@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { HiOutlinePencilSquare, HiOutlineTrash, HiOutlineArrowPath, HiOutlineClipboardDocument, HiOutlineCheck, HiOutlineQueueList } from 'react-icons/hi2';
+import { useState, useEffect } from 'react';
+import { HiOutlinePencilSquare, HiOutlineTrash, HiOutlineQueueList } from 'react-icons/hi2';
 import ConfirmModal from '../../components/ConfirmModal';
 import AreasModal from '../../components/AreasModal';
 import api from '../../api/axios';
-import { generatePassword, passwordStrength } from '../../utils/password';
 
 const countries = [
   'Argentina', 'Bolivia', 'Brasil', 'Chile', 'Colombia', 'Costa Rica', 'Cuba',
@@ -30,12 +29,10 @@ export default function FreelancersList() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Freelancer | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', country: '', documentId: '', areaId: 0, yearsOfExperience: 0, skills: '', bio: '', tenantId: 0 });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', country: '', documentId: '', areaId: 0, yearsOfExperience: 0, skills: '', bio: '', tenantId: 0 });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Freelancer | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [showAreas, setShowAreas] = useState(false);
   const [search, setSearch] = useState('');
   const [skillInput, setSkillInput] = useState('');
@@ -58,19 +55,6 @@ export default function FreelancersList() {
   const [filterTenant, setFilterTenant] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  const handleGenerate = useCallback(() => {
-    setForm((prev) => ({ ...prev, password: generatePassword() }));
-    setCopied(false);
-  }, []);
-
-  const handleCopy = async () => {
-    if (form.password) {
-      await navigator.clipboard.writeText(form.password);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const load = async () => {
     const [f, t, a] = await Promise.all([
       api.get('/super-admin/freelancers'),
@@ -85,14 +69,14 @@ export default function FreelancersList() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', email: '', password: generatePassword(), phone: '', country: '', documentId: '', areaId: 0, yearsOfExperience: 0, skills: '', bio: '', tenantId: 0 });
-    setError(''); setCopied(false); setShowForm(true);
+    setForm({ name: '', email: '', phone: '', country: '', documentId: '', areaId: 0, yearsOfExperience: 0, skills: '', bio: '', tenantId: 0 });
+    setError(''); setShowForm(true);
   };
 
   const openEdit = (f: Freelancer) => {
     setEditing(f);
-    setForm({ name: f.name, email: f.email, password: '', phone: f.phone || '', country: f.country || '', documentId: f.documentId || '', areaId: f.area?.id || 0, yearsOfExperience: f.yearsOfExperience || 0, skills: f.skills || '', bio: f.bio || '', tenantId: f.tenant?.id || 0 });
-    setError(''); setCopied(false); setShowForm(true);
+    setForm({ name: f.name, email: f.email, phone: f.phone || '', country: f.country || '', documentId: f.documentId || '', areaId: f.area?.id || 0, yearsOfExperience: f.yearsOfExperience || 0, skills: f.skills || '', bio: f.bio || '', tenantId: f.tenant?.id || 0 });
+    setError(''); setShowForm(true);
   };
 
   const handleSave = async () => {
@@ -106,9 +90,9 @@ export default function FreelancersList() {
         tenantId: form.tenantId || undefined,
       };
       if (editing) {
-        await api.put(`/super-admin/freelancers/${editing.id}`, { ...payload, ...(form.password ? { password: form.password } : {}) });
+        await api.put(`/super-admin/freelancers/${editing.id}`, payload);
       } else {
-        await api.post('/super-admin/freelancers', { ...payload, password: form.password });
+        await api.post('/super-admin/freelancers', payload);
       }
       setShowForm(false); setEditing(null); load();
     } catch (err: any) {
@@ -322,49 +306,9 @@ export default function FreelancersList() {
                 <div className="border-t border-gray-100 pt-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-1 h-5 bg-gray-300 rounded-full"></div>
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Acceso y asignación</span>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Asignación de tenant</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {editing ? 'Nueva contraseña' : 'Contraseña'} <span className="text-red-400">*</span>
-                      </label>
-                      <div className="relative">
-                        <input type={showPassword ? 'text' : 'password'} placeholder={editing ? 'Dejar vacío' : '••••••••'}
-                          className="w-full pr-24 pl-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white font-mono"
-                          value={form.password} onChange={(e) => { setForm({ ...form, password: e.target.value }); setCopied(false); }} />
-                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex gap-0.5">
-                          <button type="button" onClick={() => setShowPassword(!showPassword)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition" title={showPassword ? 'Ocultar' : 'Mostrar'}>
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                              {showPassword
-                                ? <><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></>
-                                : <><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></>
-                              }
-                            </svg>
-                          </button>
-                          <button type="button" onClick={handleGenerate}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Generar">
-                            <HiOutlineArrowPath className="w-4 h-4" />
-                          </button>
-                          <button type="button" onClick={handleCopy}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="Copiar">
-                            {copied ? <HiOutlineCheck className="w-4 h-4 text-green-500" /> : <HiOutlineClipboardDocument className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </div>
-                      {form.password && (
-                        <div className="mt-2">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-300 ${passwordStrength(form.password).color} ${passwordStrength(form.password).width}`}></div>
-                            </div>
-                            <span className={`text-[11px] font-medium ${passwordStrength(form.password).textColor}`}>{passwordStrength(form.password).label}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div>
+                  <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Asignar a tenant</label>
                       <select className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white"
                         value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: Number(e.target.value) })}>
@@ -380,7 +324,6 @@ export default function FreelancersList() {
                         </div>
                       )}
                     </div>
-                  </div>
                 </div>
               </div>
             </div>

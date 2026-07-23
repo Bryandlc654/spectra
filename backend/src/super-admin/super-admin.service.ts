@@ -106,10 +106,16 @@ export class SuperAdminService {
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async createFreelancer(data: { name: string; email: string; password: string; phone?: string; country?: string; documentId?: string; areaId?: number; yearsOfExperience?: number; skills?: string; bio?: string; tenantId?: number }) {
+  async createFreelancer(data: { name: string; email: string; phone?: string; country?: string; documentId?: string; areaId?: number; yearsOfExperience?: number; skills?: string; bio?: string; tenantId?: number }) {
     const existing = await this.usersRepository.findOne({ where: { email: data.email } });
     if (existing) throw new ConflictException('Email already in use');
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const invitationToken = this.jwtService.sign(
+      { sub: 0, email: data.email, type: 'admin_invitation' },
+      { expiresIn: '7d' },
+    );
+    const invitationExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
     let code = '';
     for (let attempt = 0; attempt < 10; attempt++) {
       code = String(Math.floor(100000 + Math.random() * 900000));
@@ -117,14 +123,21 @@ export class SuperAdminService {
       if (!dup) break;
     }
     const user = this.usersRepository.create({
-      name: data.name, email: data.email, password: hashedPassword, code,
+      name: data.name, email: data.email, password: await bcrypt.hash('PENDING', 10), code,
       phone: data.phone, country: data.country, documentId: data.documentId,
       areaId: data.areaId, yearsOfExperience: data.yearsOfExperience,
       skills: data.skills, bio: data.bio,
       role: UserRole.FREELANCE,
       tenantId: data.tenantId ?? undefined,
+      invitationToken,
+      invitationExpires,
     } as any);
     const saved = await this.usersRepository.save(user) as unknown as User;
+
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const inviteUrl = `${appUrl}/accept-invitation/${invitationToken}`;
+
+    await this.emailService.sendInvitation(data.email, data.name, inviteUrl);
     await this.kycService.create(saved.id, 'freelance');
     return saved;
   }

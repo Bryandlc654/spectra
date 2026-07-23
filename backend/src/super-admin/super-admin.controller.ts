@@ -59,7 +59,7 @@ export class SuperAdminController {
   }
 
   @Post('freelancers')
-  async createFreelancer(@Req() req: any, @Body() body: { name: string; email: string; password: string; phone?: string; country?: string; documentId?: string; areaId?: number; yearsOfExperience?: number; skills?: string; bio?: string; tenantId?: number }) {
+  async createFreelancer(@Req() req: any, @Body() body: { name: string; email: string; phone?: string; country?: string; documentId?: string; areaId?: number; yearsOfExperience?: number; skills?: string; bio?: string; tenantId?: number }) {
     const result = await this.service.createFreelancer(body);
     logUserAction(this.activityLog, req, 'create', 'freelancer', result.id, `Creó freelancer: ${body.name}`);
     return result;
