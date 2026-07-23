@@ -76,6 +76,11 @@ export default function Login() {
                   {showPassword ? <HiOutlineEyeSlash className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
                 </button>
               </div>
+              <div className="mt-1.5 text-right">
+                <Link to="/forgot-password" className="text-xs text-primary-500 hover:text-primary-600 transition">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
             </div>
 
             <button

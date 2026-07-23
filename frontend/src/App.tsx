@@ -9,6 +9,8 @@ import DashboardRouter from './components/DashboardRouter';
 const Login = React.lazy(() => import('./components/Login'));
 const Register = React.lazy(() => import('./components/Register'));
 const SignPage = React.lazy(() => import('./components/SignPage'));
+const ForgotPassword = React.lazy(() => import('./components/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('./components/ResetPassword'));
 
 function Suspense({ children }: { children: React.ReactNode }) {
   return <React.Suspense fallback={<div className="flex items-center justify-center h-screen text-primary-500">Cargando...</div>}>{children}</React.Suspense>;
@@ -22,6 +24,8 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Suspense><Login /></Suspense>} />
             <Route path="/register" element={<Suspense><Register /></Suspense>} />
+            <Route path="/forgot-password" element={<Suspense><ForgotPassword /></Suspense>} />
+            <Route path="/reset-password" element={<Suspense><ResetPassword /></Suspense>} />
             <Route
               path="/dashboard"
               element={

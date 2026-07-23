@@ -40,6 +40,10 @@ export class UsersService {
     return this.usersRepository.save(user);
   }
 
+  async updatePassword(id: number, hashedPassword: string): Promise<void> {
+    await this.usersRepository.update(id, { password: hashedPassword });
+  }
+
   async remove(id: number): Promise<void> {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException('User not found');

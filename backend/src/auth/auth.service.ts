@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
@@ -36,6 +36,50 @@ export class AuthService {
     if (!user.isActive) throw new UnauthorizedException('Account is inactive');
 
     return this.generateToken(user);
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      return { message: 'Si el email existe, recibirás un enlace de recuperación' };
+    }
+
+    const resetToken = this.jwtService.sign(
+      { sub: user.id, email: user.email, type: 'password_reset' },
+      { expiresIn: '1h' },
+    );
+
+    const appUrl = process.env.APP_URL || 'http://localhost:5173';
+    const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
+
+    return {
+      message: 'Si el email existe, recibirás un enlace de recuperación',
+      resetUrl,
+      userName: user.name,
+      userEmail: user.email,
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      const payload = this.jwtService.verify(token);
+      if (payload.type !== 'password_reset') {
+        throw new BadRequestException('Token inválido');
+      }
+
+      const user = await this.usersService.findById(payload.sub);
+      if (!user) {
+        throw new BadRequestException('Usuario no encontrado');
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await this.usersService.updatePassword(user.id, hashedPassword);
+
+      return { message: 'Contraseña actualizada correctamente' };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      throw new BadRequestException('Token inválido o expirado');
+    }
   }
 
   private generateToken(user: any) {
