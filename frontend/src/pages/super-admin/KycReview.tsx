@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
+import { fileUrl } from '../../utils/fileUrl';
 import { HiOutlineCheckCircle, HiOutlineDocumentArrowDown, HiOutlineShieldCheck, HiOutlineUserGroup, HiOutlineClock, HiOutlineXCircle, HiOutlineEye, HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi2';
 
 interface KycDocument {
@@ -166,7 +167,7 @@ export default function KycReview() {
                       {req.documents.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-3">
                           {req.documents.map((doc) => (
-                            <a key={doc.id} href={doc.filePath} target="_blank" rel="noopener noreferrer"
+                            <a key={doc.id} href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-600 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition">
                               <HiOutlineDocumentArrowDown className="w-3.5 h-3.5" />
                               {doc.type === 'identity' ? 'Documento Identidad' : doc.type === 'cv' ? 'CV' : doc.type === 'tenant_document' ? 'Doc. Tenant' : doc.type}
@@ -244,7 +245,7 @@ export default function KycReview() {
                   <p className="text-sm font-medium text-gray-700 mb-3">Documentos presentados</p>
                   <div className="space-y-2">
                     {reviewing.documents.map((doc) => (
-                      <a key={doc.id} href={doc.filePath} target="_blank" rel="noopener noreferrer"
+                      <a key={doc.id} href={fileUrl(doc.filePath)} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 text-sm hover:bg-primary-50 transition border border-gray-200 hover:border-primary-200 group">
                         <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center border border-gray-200 group-hover:border-primary-200">
                           <HiOutlineDocumentArrowDown className="w-5 h-5 text-primary-500" />

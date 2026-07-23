@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { HiOutlineCheckCircle, HiOutlineDocumentText, HiOutlineExclamationCircle } from 'react-icons/hi2';
 import { signatureService } from '../services/api';
+import { fileUrl } from '../utils/fileUrl';
 import type { SignerResponse, Signer } from '../types';
 
 const SAVED_SIG_KEY = 'spectra_saved_signature';
@@ -219,10 +220,10 @@ export default function SignPage() {
               </h2>
               <div ref={docRef} className="relative border-2 border-gray-200 rounded-xl overflow-hidden bg-white">
                 {signer.document.mimeType?.startsWith('image/') ? (
-                  <img src={signer.document.filePath} alt="Document" className="w-full cursor-pointer" onClick={handleDocClick} />
+                  <img src={fileUrl(signer.document.filePath)} alt="Document" className="w-full cursor-pointer" onClick={handleDocClick} />
                 ) : (
                   <div className="relative">
-                    <iframe src={signer.document.filePath} className="w-full h-[400px] sm:h-[500px] pointer-events-none" title="Document" sandbox="allow-same-origin" />
+                    <iframe src={fileUrl(signer.document.filePath)} className="w-full h-[400px] sm:h-[500px] pointer-events-none" title="Document" sandbox="allow-same-origin" />
                     <div className="absolute inset-0 cursor-pointer" onClick={handleDocClick}></div>
                   </div>
                 )}
