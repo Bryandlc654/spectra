@@ -77,7 +77,9 @@ export class SuperAdminService {
       } catch {}
     }
 
-    await this.emailService.sendInvitation(data.email, data.name, inviteUrl, tenantName);
+    await this.emailService.sendInvitation(data.email, data.name, inviteUrl, tenantName).catch((err) => {
+      console.error('Failed to send invitation email:', err.message);
+    });
     await this.kycService.create(saved.id, 'admin_tenant');
     return saved;
   }
@@ -137,7 +139,9 @@ export class SuperAdminService {
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
     const inviteUrl = `${appUrl}/accept-invitation/${invitationToken}`;
 
-    await this.emailService.sendInvitation(data.email, data.name, inviteUrl);
+    await this.emailService.sendInvitation(data.email, data.name, inviteUrl).catch((err) => {
+      console.error('Failed to send invitation email:', err.message);
+    });
     await this.kycService.create(saved.id, 'freelance');
     return saved;
   }

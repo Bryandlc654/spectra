@@ -16,9 +16,10 @@ export class EmailService {
 
   private async send(to: string, subject: string, html: string) {
     if (!this.apiKey) {
-      this.logger.error('Resend not configured');
-      return;
+      this.logger.error('Resend not configured - RESEND_API_KEY is missing');
+      throw new Error('Email service not configured');
     }
+    this.logger.log(`Sending email to ${to} with subject "${subject}"`);
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -29,8 +30,10 @@ export class EmailService {
     });
     if (!res.ok) {
       const err = await res.text();
-      this.logger.error(`Resend error: ${err}`);
+      this.logger.error(`Resend error (${res.status}): ${err}`);
+      throw new Error(`Email send failed: ${err}`);
     }
+    this.logger.log(`Email sent successfully to ${to}`);
   }
 
   async sendCredentials(email: string, name: string, password: string, tenantName?: string) {
