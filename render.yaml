@@ -22,3 +22,9 @@ services:
         value: 24h
       - key: NODE_ENV
         value: production
+      - key: APP_URL
+        value: https://spectra-frontend.onrender.com
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: noreply@spectra.com

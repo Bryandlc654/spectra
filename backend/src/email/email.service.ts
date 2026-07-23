@@ -1,56 +1,28 @@
-import { Injectable, Inject, Optional } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
-import { SettingsService } from '../settings/settings.service';
+import { Injectable, Logger } from '@nestjs/common';
+import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
-  private transporter: nodemailer.Transporter | null = null;
-  private from: string = process.env.SMTP_FROM || 'noreply@spectra.com';
-  private initialized = false;
+  private readonly logger = new Logger(EmailService.name);
+  private resend: Resend | null = null;
+  private from: string;
 
-  constructor(
-    @Optional() @Inject(SettingsService) private settingsService?: SettingsService,
-  ) {}
-
-  private async ensureInit() {
-    if (this.initialized && this.transporter) return;
-    let host = process.env.SMTP_HOST || 'smtp.gmail.com';
-    let port = Number(process.env.SMTP_PORT) || 587;
-    let user = process.env.SMTP_USER || '';
-    let pass = process.env.SMTP_PASS || '';
-    this.from = process.env.SMTP_FROM || 'noreply@spectra.com';
-
-    if (this.settingsService) {
-      try {
-        const smtp = await this.settingsService.getAll(['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from']);
-        if (smtp.smtp_host) host = smtp.smtp_host;
-        if (smtp.smtp_port) port = Number(smtp.smtp_port);
-        if (smtp.smtp_user) user = smtp.smtp_user;
-        if (smtp.smtp_pass) pass = smtp.smtp_pass;
-        if (smtp.smtp_from) this.from = smtp.smtp_from;
-      } catch {}
+  constructor() {
+    const apiKey = process.env.RESEND_API_KEY;
+    this.from = process.env.RESEND_FROM || 'noreply@spectra.com';
+    if (apiKey) {
+      this.resend = new Resend(apiKey);
+    } else {
+      this.logger.warn('RESEND_API_KEY not configured');
     }
-
-    this.transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: user && pass ? { user, pass } : undefined,
-    });
-    this.initialized = true;
-  }
-
-  async refreshConfig() {
-    this.initialized = false;
-    await this.ensureInit();
   }
 
   async sendCredentials(email: string, name: string, password: string, tenantName?: string) {
-    await this.ensureInit();
-    if (!this.transporter) {
-      console.error('SMTP not configured');
+    if (!this.resend) {
+      this.logger.error('Resend not configured');
       return;
     }
+
     const subject = tenantName
       ? `Bienvenido a Spectra - Acceso como administrador de ${tenantName}`
       : 'Bienvenido a Spectra - Acceso al panel';
@@ -91,24 +63,26 @@ export class EmailService {
     `;
 
     try {
-      await this.transporter!.sendMail({
+      await this.resend!.emails.send({
         from: this.from,
         to: email,
         subject,
         html,
       });
     } catch (err) {
-      console.error('Failed to send email:', err);
+      this.logger.error('Failed to send email:', err);
     }
   }
 
   async sendRaw(to: string, subject: string, html: string) {
-    await this.ensureInit();
-    if (!this.transporter) { console.error('SMTP not configured'); return; }
+    if (!this.resend) {
+      this.logger.error('Resend not configured');
+      return;
+    }
     try {
-      await this.transporter!.sendMail({ from: this.from, to, subject, html });
+      await this.resend!.emails.send({ from: this.from, to, subject, html });
     } catch (err) {
-      console.error('Failed to send email:', err);
+      this.logger.error('Failed to send email:', err);
     }
   }
 }

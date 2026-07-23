@@ -19,10 +19,4 @@ export class EmailController {
     );
     return { message: 'Test email sent' };
   }
-
-  @Post('refresh')
-  async refresh() {
-    await this.emailService.refreshConfig();
-    return { message: 'SMTP config refreshed' };
-  }
 }
