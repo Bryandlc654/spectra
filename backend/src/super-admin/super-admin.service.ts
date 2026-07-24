@@ -24,7 +24,12 @@ export class SuperAdminService {
       this.usersRepository.count(),
       this.usersRepository.count({ where: { role: UserRole.ADMIN_TENANT } }),
       this.usersRepository.count({ where: { role: UserRole.FREELANCE } }),
-      this.usersRepository.find({ order: { createdAt: 'DESC' }, take: 5 }),
+      this.usersRepository
+        .createQueryBuilder('user')
+        .select(['user.id', 'user.email', 'user.name', 'user.role', 'user.phone', 'user.createdAt', 'user.isActive'])
+        .orderBy('user.createdAt', 'DESC')
+        .limit(5)
+        .getMany(),
     ]);
 
     return {
@@ -46,7 +51,8 @@ export class SuperAdminService {
     }
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    const safe = data.map(({ password, invitationToken, invitationExpires, ...rest }: any) => rest);
+    return { data: safe, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async createAdminTenant(data: { name: string; email: string; phone?: string; tenantId?: number }) {
@@ -116,7 +122,8 @@ export class SuperAdminService {
     }
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    const safe = data.map(({ password, invitationToken, invitationExpires, ...rest }: any) => rest);
+    return { data: safe, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async createFreelancer(data: { name: string; email: string; phone?: string; country?: string; documentId?: string; areaId?: number; yearsOfExperience?: number; skills?: string; bio?: string; tenantId?: number }) {
