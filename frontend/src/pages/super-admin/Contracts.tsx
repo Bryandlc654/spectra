@@ -65,6 +65,10 @@ function ContractForm({ form, setForm, onSubmit, onCancel, templates, freelancer
         <input type="date" {...register('endDate')} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
       </div>
       <input type="number" {...register('amount')} placeholder="Monto $" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+        <p className="text-xs font-medium text-gray-600 mb-1">Placeholders disponibles en plantillas:</p>
+        <p className="text-xs text-gray-400">{`{{tenant_name}} {{freelancer_name}} {{date}} {{start_date}} {{end_date}} {{amount}}`}</p>
+      </div>
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition">Cancelar</button>
         <button type="submit" className="flex-1 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition shadow-md">Crear contrato</button>
