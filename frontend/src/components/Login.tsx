@@ -1,25 +1,25 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { HiOutlineBolt, HiOutlineEnvelope, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeSlash, HiOutlineExclamationCircle } from 'react-icons/hi2';
+import toast from 'react-hot-toast';
+import { HiOutlineBolt, HiOutlineEnvelope, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeSlash } from 'react-icons/hi2';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
     try {
       await login(form.email, form.password);
       navigate('/dashboard');
-    } catch {
-      setError('Credenciales inválidas');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Credenciales inválidas';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -37,13 +37,6 @@ export default function Login() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100">
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-600 p-3 rounded-lg mb-5 text-sm border border-red-100">
-              <HiOutlineExclamationCircle className="w-5 h-5 shrink-0" />
-              {error}
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>

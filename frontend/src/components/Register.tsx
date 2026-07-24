@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { HiOutlineUserPlus, HiOutlineUser, HiOutlineEnvelope, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeSlash, HiOutlinePhone, HiOutlineShieldCheck, HiOutlineExclamationCircle } from 'react-icons/hi2';
+import toast from 'react-hot-toast';
+import { HiOutlineUserPlus, HiOutlineUser, HiOutlineEnvelope, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeSlash, HiOutlinePhone, HiOutlineShieldCheck } from 'react-icons/hi2';
 
 const roles = [
   { value: 'super_admin', label: 'Super Admin' },
@@ -14,18 +15,17 @@ export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState<{ name: string; email: string; password: string; phone: string; role: 'super_admin' | 'admin_tenant' | 'freelance' }>({ name: '', email: '', password: '', phone: '', role: 'freelance' });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
     try {
       await register(form);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al registrarse');
+      const msg = err?.response?.data?.message || 'Error al registrarse';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -43,12 +43,6 @@ export default function Register() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100">
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-600 p-3 rounded-lg mb-5 text-sm border border-red-100">
-              <HiOutlineExclamationCircle className="w-5 h-5 shrink-0" />
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

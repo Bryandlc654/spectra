@@ -1,46 +1,28 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { HiOutlineBolt, HiOutlineEnvelope, HiOutlineCheckCircle, HiOutlineExclamationCircle } from 'react-icons/hi2';
+import toast from 'react-hot-toast';
+import { HiOutlineBolt, HiOutlineEnvelope } from 'react-icons/hi2';
 import api from '../api/axios';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
     try {
-      await api.post('/auth/forgot-password', { email });
-      setSent(true);
-    } catch {
-      setError('Error al enviar el enlace. Intenta de nuevo.');
+      const response = await api.post('/auth/forgot-password', { email });
+      toast.success(response.data.message || 'Si el email existe, recibirás un enlace de recuperación');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Error al enviar el enlace. Intenta de nuevo.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  if (sent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 px-4">
-        <div className="w-full max-w-md text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-2xl mb-4">
-            <HiOutlineCheckCircle className="w-8 h-8 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Email enviado</h1>
-          <p className="text-gray-500 mb-6">
-            Si el email <strong>{email}</strong> está registrado, recibirás un enlace para restablecer tu contraseña.
-          </p>
-          <Link to="/login" className="text-primary-500 font-medium hover:text-primary-600 transition">
-            Volver al login
-          </Link>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 px-4">
@@ -54,12 +36,6 @@ export default function ForgotPassword() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100">
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-600 p-3 rounded-lg mb-5 text-sm border border-red-100">
-              <HiOutlineExclamationCircle className="w-5 h-5 shrink-0" />
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>

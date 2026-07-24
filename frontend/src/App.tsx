@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -22,6 +23,7 @@ export default function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
+          <Toaster position="top-right" toastOptions={{ duration: 4000, style: { borderRadius: '12px', padding: '14px 16px', fontSize: '14px' } }} />
           <Routes>
             <Route path="/login" element={<Suspense><Login /></Suspense>} />
             <Route path="/register" element={<Suspense><Register /></Suspense>} />

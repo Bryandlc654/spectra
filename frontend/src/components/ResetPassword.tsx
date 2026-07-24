@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { HiOutlineBolt, HiOutlineLockClosed, HiOutlineCheckCircle, HiOutlineExclamationCircle, HiOutlineEye, HiOutlineEyeSlash } from 'react-icons/hi2';
 import api from '../api/axios';
 import { generatePassword, passwordStrength } from '../utils/password';
@@ -11,21 +12,22 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-  const [error, setError] = useState('');
 
   const strength = passwordStrength(newPassword);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) { setError('Token inválido'); return; }
+    if (!token) { 
+      toast.error('Token inválido'); 
+      return; 
+    }
     setLoading(true);
-    setError('');
     try {
       await api.post('/auth/reset-password', { token, newPassword });
       setDone(true);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error al restablecer la contraseña';
-      setError(message);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Error al restablecer la contraseña';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -83,12 +85,6 @@ export default function ResetPassword() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 p-8 border border-gray-100">
-          {error && (
-            <div className="flex items-center gap-2 bg-red-50 text-red-600 p-3 rounded-lg mb-5 text-sm border border-red-100">
-              <HiOutlineExclamationCircle className="w-5 h-5 shrink-0" />
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
