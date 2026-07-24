@@ -118,6 +118,17 @@ export class AuthService {
     }
   }
 
+  async findUserByInvitationToken(token: string): Promise<User | null> {
+    try {
+      const payload = this.jwtService.verify(token);
+      if (payload.type !== 'admin_invitation') return null;
+      const user = await this.usersService.findByEmail(payload.email);
+      return user && user.invitationToken ? user : null;
+    } catch {
+      return null;
+    }
+  }
+
   private generateToken(user: any) {
     const payload = { sub: user.id, email: user.email, role: user.role };
     return {

@@ -89,7 +89,18 @@ export class AuthController {
   }
 
   @Post('accept-invitation')
-  async acceptInvitation(@Body() dto: AcceptInvitationDto) {
-    return this.authService.acceptInvitation(dto.token, dto.newPassword);
+  async acceptInvitation(@Req() req: any, @Body() dto: AcceptInvitationDto) {
+    const result = await this.authService.acceptInvitation(dto.token, dto.newPassword);
+    const user = await this.authService.findUserByInvitationToken(dto.token).catch(() => null);
+    if (user) {
+      this.sessionLogs.log({
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        ipAddress: req.ip,
+        userAgent: req.headers?.['user-agent'],
+      }).catch((err) => this.logger.error('Failed to log accept-invitation session', err));
+    }
+    return result;
   }
 }
