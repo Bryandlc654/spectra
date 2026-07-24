@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../users/user.entity';
-import { Contract } from '../contracts/contract.entity';
+import { Contract, ContractStatus } from '../contracts/contract.entity';
 import { KycRequest, KycStatus } from '../kyc/kyc-request.entity';
 import { KycDocument } from '../kyc/kyc-document.entity';
 import { Area } from '../areas/area.entity';
@@ -73,6 +73,16 @@ export class FreelanceService {
     if (!contract) throw new NotFoundException('Contract not found');
     if (contract.freelancerUserId !== userId) throw new NotFoundException('Contract not found');
     return contract;
+  }
+
+  async signContract(userId: number, id: number) {
+    const contract = await this.getContractById(userId, id);
+    if (contract.status !== ContractStatus.SENT) {
+      throw new BadRequestException('You can only sign sent contracts');
+    }
+    contract.status = ContractStatus.SIGNED;
+    contract.signedAt = new Date();
+    return this.contractsRepo.save(contract);
   }
 
   async getKycStatus(userId: number) {

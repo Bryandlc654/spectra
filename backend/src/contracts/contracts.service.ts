@@ -15,6 +15,8 @@ export class ContractsService {
   async findAll(filters?: { tenantUserId?: number; freelancerUserId?: number; status?: string; search?: string }, page = 1, limit = 50) {
     const qb = this.repo.createQueryBuilder('contract')
       .leftJoinAndSelect('contract.template', 'template')
+      .leftJoinAndSelect('contract.signDocument', 'signDocument')
+      .leftJoinAndSelect('signDocument.signers', 'signers')
       .orderBy('contract.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
@@ -31,7 +33,7 @@ export class ContractsService {
   }
 
   async findById(id: number) {
-    const contract = await this.repo.findOne({ where: { id }, relations: ['template'] });
+    const contract = await this.repo.findOne({ where: { id }, relations: ['template', 'signDocument', 'signDocument.signers'] });
     if (!contract) throw new NotFoundException('Contract not found');
     return contract;
   }

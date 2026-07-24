@@ -8,6 +8,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { downloadPdf } from '../../utils/pdf';
 import api from '../../api/axios';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useNavigate } from 'react-router-dom';
 
 type ContractFormData = {
   templateId: number;
@@ -26,6 +27,21 @@ interface Contract {
   id: number; title: string; content: string; status: string; freelancerUserId: number;
   freelancerName?: string; tenantName?: string; amount?: number; startDate?: string;
   endDate?: string; template?: { id: number; name: string }; createdAt: string;
+  signDocumentId?: number;
+  signDocument?: {
+    id: number;
+    title: string;
+    status: string;
+    signers: Array<{
+      id: number;
+      name: string;
+      email: string;
+      role: string;
+      signOrder: number;
+      hasSigned: boolean;
+      token: string;
+    }>;
+  };
 }
 
 interface Template { id: number; name: string; content: string; isActive: boolean; tenantId?: number; }
@@ -40,6 +56,7 @@ const statusBadge = (s: string) => {
 
 export default function AdminTenantContracts() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
 
   const contractSchema = useMemo(() => z.object({
     templateId: z.number().min(1, t('contracts.selectTemplate')),
@@ -171,6 +188,23 @@ export default function AdminTenantContracts() {
     } catch { setError(t('error.updateStatus')); }
   };
 
+  const handleInitiateSignature = async (contract: Contract) => {
+    try {
+      const { data } = await api.post(`/admin-tenant/contracts/${contract.id}/signature`);
+      const signers = [...(data?.signDocument?.signers || [])].sort((a: any, b: any) => a.signOrder - b.signOrder);
+      const adminSigner = signers.find((signer: any) => signer.signOrder === 1 && !signer.hasSigned);
+      if (!adminSigner?.token) {
+        setError('No se encontró un enlace de firma pendiente para el administrador');
+        await load();
+        return;
+      }
+      setSelected(null);
+      navigate(`/sign/${adminSigner.token}`);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'No se pudo iniciar la firma digital');
+    }
+  };
+
   const openEdit = (c: Contract) => {
     setEditing(c);
     setEditForm({
@@ -295,6 +329,13 @@ export default function AdminTenantContracts() {
                   <div className="flex gap-1 ml-4 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => setSelected(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title={t('actions.view')}><HiOutlineEye className="w-4 h-4" /></button>
                     {c.status === 'draft' && <button onClick={() => openEdit(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title={t('actions.edit')}><HiOutlinePencilSquare className="w-4 h-4" /></button>}
+                    {((c.status === 'draft' && !c.signDocumentId) || c.signDocument?.signers?.some((signer) => signer.signOrder === 1 && !signer.hasSigned)) && (
+                      <button onClick={() => handleInitiateSignature(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition" title="Firma digital">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487a2.1 2.1 0 113.03 2.906L9.12 18.629a4 4 0 01-1.878 1.08l-3.273.909.923-3.233a4 4 0 011.067-1.832L16.862 4.487z" />
+                        </svg>
+                      </button>
+                    )}
                     <button onClick={() => downloadPdf(`/contracts/${c.id}/pdf`, `contract-${c.id}.pdf`)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="PDF">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
                     </button>
@@ -449,17 +490,34 @@ export default function AdminTenantContracts() {
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               <div className="border rounded-xl bg-white p-6 whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">{selected.content}</div>
+              {selected.signDocument?.signers?.length ? (
+                <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Flujo de firma</p>
+                  <div className="space-y-2">
+                    {selected.signDocument.signers
+                      .slice()
+                      .sort((a, b) => a.signOrder - b.signOrder)
+                      .map((signer) => (
+                        <div key={signer.id} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600">{signer.signOrder}. {signer.name} · {signer.role}</span>
+                          <span className={signer.hasSigned ? 'text-green-600 font-medium' : 'text-yellow-600 font-medium'}>
+                            {signer.hasSigned ? 'Firmado' : 'Pendiente'}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl shrink-0">
               {selected.status === 'draft' && (
                 <>
                   <button onClick={() => handleStatusChange(selected.id, 'cancelled')} className="px-4 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition">{t('actions.cancel')}</button>
-                  <button onClick={() => handleStatusChange(selected.id, 'sent')} className="px-4 py-2.5 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 transition shadow-md">{t('actions.send')}</button>
-                  <button onClick={() => handleStatusChange(selected.id, 'signed')} className="px-4 py-2.5 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition shadow-md">{t('contracts.signContract')}</button>
+                  <button onClick={() => handleInitiateSignature(selected)} className="px-4 py-2.5 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition shadow-md">Firmar primero</button>
                 </>
               )}
-              {selected.status === 'sent' && (
-                <button onClick={() => handleStatusChange(selected.id, 'signed')} className="px-4 py-2.5 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition shadow-md">{t('contracts.signContract')}</button>
+              {selected.signDocument?.signers?.some((signer) => signer.signOrder === 1 && !signer.hasSigned) && selected.status !== 'draft' && (
+                <button onClick={() => handleInitiateSignature(selected)} className="px-4 py-2.5 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition shadow-md">Continuar firma</button>
               )}
             </div>
           </div>

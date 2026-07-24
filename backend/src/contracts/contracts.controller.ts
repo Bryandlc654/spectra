@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Req, Res, Query, ParseIntPipe } from '@nestjs/common';
 import { Response } from 'express';
+import * as fs from 'fs';
+import { join } from 'path';
 const PDFDocument = require('pdfkit');
 import { ContractTemplatesService } from './contract-templates.service';
 import { ContractsService } from './contracts.service';
@@ -161,6 +163,12 @@ export class ContractsController {
   @UseGuards(JwtAuthGuard)
   async getPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const contract = await this.contractsService.findById(id);
+    const signedFilePath = contract.signDocument?.filePath
+      ? join(process.cwd(), contract.signDocument.filePath.replace(/^\/+/, '').replace(/\//g, '\\'))
+      : '';
+    if (signedFilePath && fs.existsSync(signedFilePath)) {
+      return res.sendFile(signedFilePath);
+    }
     const doc = new PDFDocument({ margin: 70, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="contrato-${String(contract.id).padStart(6, '0')}.pdf"`);

@@ -2,6 +2,9 @@ import { Injectable, UnauthorizedException, NotFoundException, ConflictException
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import * as fs from 'fs';
+import * as path from 'path';
+const PDFDocument = require('pdfkit');
 import { JwtService } from '@nestjs/jwt';
 import { User, UserRole } from '../users/user.entity';
 import { Contract, ContractStatus } from '../contracts/contract.entity';
@@ -14,6 +17,7 @@ import { Area } from '../areas/area.entity';
 import { Tenant } from '../tenants/tenant.entity';
 import { EmailService } from '../email/email.service';
 import { KybService } from '../kyb/kyb.service';
+import { SignaturesService } from '../signatures/signatures.service';
 
 @Injectable()
 export class AdminTenantService {
@@ -28,6 +32,7 @@ export class AdminTenantService {
     private emailService: EmailService,
     private jwtService: JwtService,
     private kybService: KybService,
+    private signaturesService: SignaturesService,
   ) {}
 
   private async getTenantIdForUser(userId: number): Promise<number> {
@@ -174,6 +179,8 @@ export class AdminTenantService {
     const tenantId = await this.getTenantIdForUser(adminId);
     const qb = this.contractsRepo.createQueryBuilder('contract')
       .leftJoinAndSelect('contract.template', 'template')
+      .leftJoinAndSelect('contract.signDocument', 'signDocument')
+      .leftJoinAndSelect('signDocument.signers', 'signers')
       .where('contract.tenantId = :tenantId', { tenantId })
       .orderBy('contract.createdAt', 'DESC')
       .skip((page - 1) * limit)
@@ -190,7 +197,7 @@ export class AdminTenantService {
 
   async getContractById(adminId: number, id: number) {
     const tenantId = await this.getTenantIdForUser(adminId);
-    const contract = await this.contractsRepo.findOne({ where: { id }, relations: ['template'] });
+    const contract = await this.contractsRepo.findOne({ where: { id }, relations: ['template', 'signDocument', 'signDocument.signers'] });
     if (!contract) throw new NotFoundException('Contract not found');
     if (contract.tenantId !== tenantId) throw new ForbiddenException('Contract not in your tenant');
     return contract;
@@ -284,8 +291,12 @@ export class AdminTenantService {
       throw new BadRequestException(`Invalid status. Allowed: ${validStatuses.join(', ')}`);
     }
     const contract = await this.getContractById(adminId, id);
+
+    if (status === ContractStatus.SIGNED) {
+      throw new BadRequestException('Use the digital signature flow to sign contracts');
+    }
+
     contract.status = status;
-    if (status === ContractStatus.SIGNED) contract.signedAt = new Date();
     const saved = await this.contractsRepo.save(contract);
 
     // Fire-and-forget email notification
@@ -297,6 +308,237 @@ export class AdminTenantService {
     }
 
     return saved;
+  }
+
+  private async generateContractPdf(contract: Contract): Promise<{ filePath: string; originalName: string }> {
+    const uploadDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    const filename = `contract-${contract.id}-${Date.now()}.pdf`;
+    const filePath = path.join(uploadDir, filename);
+    const writeStream = fs.createWriteStream(filePath);
+
+    const doc = new PDFDocument({ margin: 70, size: 'A4' });
+    doc.pipe(writeStream);
+
+    const ml = 70;
+    const pw = 450;
+    const black = '#1a1a1a';
+    const gray = '#666666';
+    const lightGray = '#aaaaaa';
+
+    const drawRule = (y: number, opts?: { width?: number; dash?: number[] }) => {
+      const w = opts?.width || pw;
+      if (opts?.dash) doc.dash(opts.dash[0], { space: opts.dash[1] });
+      doc.moveTo(ml, y).lineTo(ml + w, y).lineWidth(0.4).strokeColor('#000').stroke();
+      if (opts?.dash) doc.undash();
+    };
+
+    // Cover page
+    drawRule(80, { dash: [1, 3] });
+    doc.y = 110;
+    doc.fontSize(22).font('Helvetica-Bold').fillColor(black)
+      .text(contract.title.toUpperCase(), ml, doc.y, { width: pw, align: 'center', lineGap: 4 });
+    doc.moveDown(0.8);
+
+    const ruleW = 60;
+    drawRule(doc.y, { width: ruleW });
+    doc.moveDown(0.8);
+
+    const contractNumber = `N.° ${String(contract.id).padStart(6, '0')}`;
+    doc.fontSize(9).font('Helvetica').fillColor(gray)
+      .text(contractNumber, ml, doc.y, { width: pw, align: 'center' });
+    doc.moveDown(0.3);
+
+    const dateStr = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    doc.fontSize(9).font('Helvetica').fillColor(gray)
+      .text(dateStr, ml, doc.y, { width: pw, align: 'center' });
+
+    doc.moveDown(2);
+    drawRule(doc.y);
+    doc.moveDown(0.8);
+
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(gray)
+      .text('ENTRE', ml, doc.y, { width: pw, align: 'center' });
+    doc.moveDown(0.8);
+
+    doc.fontSize(11).font('Helvetica-Bold').fillColor(black)
+      .text(contract.tenantName || `Usuario ID ${contract.tenantUserId}`, ml, doc.y, { width: pw, align: 'center' });
+    doc.moveDown(0.3);
+    doc.fontSize(8).font('Helvetica').fillColor(gray)
+      .text('(en adelante, "EL CONTRATANTE")', ml, doc.y, { width: pw, align: 'center' });
+
+    doc.moveDown(1);
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(gray)
+      .text('Y', ml, doc.y, { width: pw, align: 'center' });
+    doc.moveDown(1);
+
+    doc.fontSize(11).font('Helvetica-Bold').fillColor(black)
+      .text(contract.freelancerName || `Usuario ID ${contract.freelancerUserId}`, ml, doc.y, { width: pw, align: 'center' });
+    doc.moveDown(0.3);
+    doc.fontSize(8).font('Helvetica').fillColor(gray)
+      .text('(en adelante, "EL CONTRATISTA")', ml, doc.y, { width: pw, align: 'center' });
+
+    doc.moveDown(1.5);
+    drawRule(doc.y);
+
+    doc.moveDown(1.5);
+    doc.fontSize(9).font('Helvetica-Oblique').fillColor(gray)
+      .text('En virtud del presente contrato, las partes acuerdan lo siguiente:', ml, doc.y, { width: pw, align: 'center' });
+
+    doc.moveDown(2);
+    drawRule(doc.y, { dash: [1, 3] });
+
+    // Content
+    doc.addPage();
+    const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+    const text = stripHtml(contract.content);
+    const lines = text.split('\n').filter((l) => l.trim());
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (doc.y > 700) {
+        doc.addPage();
+      }
+
+      if (trimmed.match(/^CONTRATO|^ACUERDO/) || trimmed.match(/^[A-ZÁÉÍÓÚÑ\s]{10,}$/)) {
+        doc.moveDown(0.8);
+        doc.fontSize(12).font('Helvetica-Bold').fillColor(black);
+        doc.text(trimmed, ml, doc.y, { width: pw, align: 'center', lineGap: 2 });
+        doc.moveDown(0.8);
+      } else if (trimmed.match(/^(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA|SÉPTIMA|OCTAVA|NOVENA|DÉCIMA|CLÁUSULAS?):/i)) {
+        doc.moveDown(0.6);
+        doc.fontSize(10).font('Helvetica-Bold').fillColor(black);
+        doc.text(trimmed, ml, doc.y, { width: pw, lineGap: 1 });
+        doc.moveDown(0.3);
+      } else if (trimmed.match(/^(CONSIDERANDO|PARTE )/i)) {
+        doc.moveDown(0.4);
+        doc.fontSize(9).font('Helvetica-Bold').fillColor(black);
+        doc.text(trimmed, ml, doc.y, { width: pw });
+        doc.moveDown(0.2);
+      } else if (trimmed.match(/^_{3,}/) || trimmed.match(/^─{3,}/)) {
+        doc.moveDown(0.6);
+      } else if (trimmed === '') {
+        doc.moveDown(0.2);
+      } else {
+        doc.fontSize(10).font('Helvetica').fillColor(black);
+        doc.text(trimmed, ml, doc.y, { width: pw, align: 'justify', lineGap: 3 });
+        doc.moveDown(0.3);
+      }
+    }
+
+    // Signature page
+    if (doc.y > 700) doc.addPage();
+
+    doc.moveDown(3);
+    drawRule(doc.y);
+    doc.moveDown(1);
+
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(black)
+      .text('FIRMAS', ml, doc.y, { width: pw, align: 'center' });
+    doc.moveDown(0.5);
+
+    doc.fontSize(8).font('Helvetica-Oblique').fillColor(gray)
+      .text('En señal de conformidad, las partes firman el presente contrato', ml, doc.y, { width: pw, align: 'center' });
+    doc.text('en dos ejemplares del mismo tenor y a un solo efecto.', ml, doc.y + 2, { width: pw, align: 'center' });
+
+    doc.moveDown(2.5);
+
+    const sigW = 160;
+    const gap = 50;
+    const leftX = ml + (pw - sigW * 2 - gap) / 2;
+    const rightX = leftX + sigW + gap;
+    const sigY = doc.y;
+
+    doc.moveTo(leftX, sigY).lineTo(leftX + sigW, sigY).lineWidth(0.8).strokeColor(black).stroke();
+    doc.moveTo(rightX, sigY).lineTo(rightX + sigW, sigY).lineWidth(0.8).strokeColor(black).stroke();
+
+    doc.moveDown(0.8);
+    doc.fontSize(9).font('Helvetica-Bold').fillColor(black)
+      .text(contract.tenantName || 'EL CONTRATANTE', leftX, doc.y, { width: sigW, align: 'center' });
+    doc.text(contract.freelancerName || 'EL CONTRATISTA', rightX, sigY + 22, { width: sigW, align: 'center' });
+
+    doc.moveDown(0.4);
+    doc.fontSize(7).font('Helvetica').fillColor(gray)
+      .text('EL CONTRATANTE', leftX, doc.y, { width: sigW, align: 'center' });
+    doc.text('EL CONTRATISTA', rightX, doc.y - 12, { width: sigW, align: 'center' });
+
+    doc.moveDown(3);
+    drawRule(doc.y, { dash: [1, 3] });
+
+    doc.end();
+
+    await new Promise<void>((resolve, reject) => {
+      writeStream.on('finish', () => resolve());
+      writeStream.on('error', reject);
+    });
+
+    return { filePath: `/uploads/${filename}`, originalName: filename };
+  }
+
+  async initiateContractSignature(adminId: number, id: number, baseUrl: string) {
+    const admin = await this.usersRepo.findOne({ where: { id: adminId } });
+    if (!admin) throw new UnauthorizedException('User not found');
+
+    const contract = await this.getContractById(adminId, id);
+    if (contract.status === ContractStatus.CANCELLED) {
+      throw new BadRequestException('Cancelled contracts cannot be signed');
+    }
+    if (contract.signDocumentId) {
+      const existing = await this.signaturesService.findById(contract.signDocumentId);
+      return { signDocument: existing };
+    }
+
+    // Generate PDF
+    const { filePath, originalName } = await this.generateContractPdf(contract);
+
+    // Create a fake Multer file object for SignaturesService.create (since we generated the file manually)
+    const fakeFile = {
+      filename: originalName,
+      originalname: `Contrato-${contract.id}.pdf`,
+      mimetype: 'application/pdf',
+      path: filePath,
+    } as unknown as Express.Multer.File;
+
+    // Create SignDocument
+    const signDoc = await this.signaturesService.create({
+      title: `Contrato: ${contract.title}`,
+      description: `Contrato entre ${contract.tenantName} y ${contract.freelancerName}`,
+      file: fakeFile,
+      ownerUserId: adminId,
+    });
+
+    // Get freelancer
+    const freelancer = await this.usersRepo.findOne({ where: { id: contract.freelancerUserId } });
+    if (!freelancer) throw new NotFoundException('Freelancer not found');
+
+    // Add signers: admin first, then freelancer
+    await this.signaturesService.addSigner(signDoc.id, {
+      name: admin.name,
+      email: admin.email,
+      role: 'Contratante',
+      signOrder: 1,
+    });
+
+    await this.signaturesService.addSigner(signDoc.id, {
+      name: freelancer.name,
+      email: freelancer.email,
+      role: 'Contratista',
+      signOrder: 2,
+    });
+
+    // Update contract with signDocumentId
+    contract.signDocumentId = signDoc.id;
+    contract.status = ContractStatus.SENT;
+    await this.contractsRepo.save(contract);
+
+    // Send the signature requests
+    await this.signaturesService.send(signDoc.id, baseUrl);
+
+    // Reload the sign doc with relations to get the signers and their tokens
+    const signDocWithSigners = await this.signaturesService.findById(signDoc.id);
+
+    return { signDocument: signDocWithSigners };
   }
 
   async deleteContract(adminId: number, id: number) {

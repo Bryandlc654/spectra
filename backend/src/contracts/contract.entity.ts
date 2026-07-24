@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { ContractTemplate } from './contract-template.entity';
+import { SignDocument } from '../signatures/sign-document.entity';
 
 export enum ContractStatus {
   DRAFT = 'draft',
@@ -64,6 +65,13 @@ export class Contract {
 
   @Column({ nullable: true })
   signedAt: Date;
+
+  @Column({ nullable: true })
+  signDocumentId: number;
+
+  @OneToOne(() => SignDocument, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'signDocumentId' })
+  signDocument: SignDocument;
 
   @CreateDateColumn()
   createdAt: Date;

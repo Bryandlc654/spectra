@@ -16,6 +16,7 @@ import { ContractsModule } from '../contracts/contracts.module';
 import { KycModule } from '../kyc/kyc.module';
 import { KybModule } from '../kyb/kyb.module';
 import { EmailModule } from '../email/email.module';
+import { SignaturesModule } from '../signatures/signatures.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { EmailModule } from '../email/email.module';
     KycModule,
     KybModule,
     EmailModule,
+    SignaturesModule,
   ],
   controllers: [AdminTenantController],
   providers: [AdminTenantService],

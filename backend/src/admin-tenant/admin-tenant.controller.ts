@@ -115,6 +115,12 @@ export class AdminTenantController {
     return this.service.deleteContract(req.user.id, id);
   }
 
+  @Post('contracts/:id/signature')
+  initiateContractSignature(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return this.service.initiateContractSignature(req.user.id, id, baseUrl);
+  }
+
   // ─── EXPORTS ──────────────────────────────────────────────
 
   @Get('export/freelancers/csv')

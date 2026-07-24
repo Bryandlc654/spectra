@@ -55,6 +55,11 @@ export class FreelanceController {
     return this.service.getContractById(req.user.id, id);
   }
 
+  @Put('contracts/:id/sign')
+  signContract(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.service.signContract(req.user.id, id);
+  }
+
   @Get('kyc')
   getKycStatus(@Req() req: any) {
     return this.service.getKycStatus(req.user.id);
