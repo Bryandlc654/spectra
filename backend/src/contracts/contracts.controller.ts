@@ -37,40 +37,78 @@ export class ContractsController {
   @UseGuards(JwtAuthGuard)
   async getTemplatePdf(@Param('id') id: string, @Res() res: Response) {
     const tpl = await this.templatesService.findById(+id);
-    const doc = new PDFDocument({ margin: 60, size: 'A4' });
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="plantilla-${tpl.id}.pdf"`);
     doc.pipe(res);
 
-    const c = '#006d70'; const ml = 60; const pw = 475;
+    const c = '#006d70';
+    const cDark = '#004d50';
+    const ml = 50;
+    const mr = 50;
+    const pw = 595 - ml - mr;
+    const pageW = 595;
 
-    doc.rect(ml, 40, pw, 60).lineWidth(2).strokeColor(c).stroke();
-    doc.fontSize(18).font('Helvetica-Bold').fillColor(c).text(tpl.name, ml, 52, { align: 'center', width: pw });
-    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#999').text('Vista previa de plantilla', { align: 'center', width: pw });
+    // Top accent line
+    doc.rect(0, 0, pageW, 4).fill(c);
 
-    const divY = 120;
-    doc.moveTo(ml, divY).lineTo(ml + pw, divY).lineWidth(1.5).strokeColor(c).stroke();
-    doc.fontSize(8).font('Helvetica').fillColor('#999').text('CONTENIDO', ml, divY + 6, { align: 'center', width: pw });
+    // Header box
+    doc.roundedRect(ml, 25, pw, 90, 4).lineWidth(1.5).strokeColor(c).stroke();
 
-    let currentY = divY + 22;
+    doc.fontSize(11).font('Helvetica-Bold').fillColor(c)
+      .text('SPECTRA', ml + 20, 35, { width: pw - 40 });
+    doc.fontSize(7).font('Helvetica').fillColor('#999')
+      .text('PLATAFORMA DE GESTIÓN PROFESIONAL', ml + 20, 50, { width: pw - 40 });
+
+    doc.moveTo(ml + 20, 62).lineTo(ml + pw - 20, 62).lineWidth(0.5).strokeColor('#ddd').stroke();
+
+    doc.fontSize(14).font('Helvetica-Bold').fillColor(cDark)
+      .text(tpl.name.toUpperCase(), ml + 20, 70, { width: pw - 40, align: 'center' });
+
+    doc.fontSize(7).font('Helvetica-Oblique').fillColor('#aaa')
+      .text('Vista previa de plantilla', ml + 20, 92, { width: pw - 40, align: 'center' });
+
+    doc.rect(0, 120, pageW, 1).fill(c);
+
+    // Content
+    let currentY = 135;
     const lines = tpl.content.split('\n').filter((l) => l.trim());
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (currentY > 720) { doc.addPage(); currentY = 60; }
-      if (trimmed.startsWith('CONTRATO') || trimmed.match(/^[A-ZÁÉÍÓÚÑ\s]{4,}$/)) {
-        doc.font('Helvetica-Bold').fontSize(12).fillColor(c); currentY += 4;
-      } else if (trimmed.match(/^(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA|SÉPTIMA|OCTAVA|NOVENA|DÉCIMA):/)) {
-        doc.font('Helvetica-Bold').fontSize(10).fillColor(c); currentY += 4;
-      } else { doc.font('Helvetica').fontSize(10).fillColor('#333'); }
-      doc.text(trimmed, ml, currentY, { width: pw, align: 'justify', lineGap: 2 });
-      currentY = doc.y + 4;
+      if (currentY > 750) { doc.addPage(); currentY = 50; }
+
+      if (trimmed.match(/^CONTRATO|^ACUERDO/) || trimmed.match(/^[A-ZÁÉÍÓÚÑ\s]{10,}$/)) {
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(cDark);
+        currentY += 6;
+        doc.text(trimmed, ml, currentY, { width: pw, align: 'center', lineGap: 1 });
+        currentY = doc.y + 6;
+      } else if (trimmed.match(/^(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA|SÉPTIMA|OCTAVA|NOVENA|DÉCIMA|CLÁUSULAS?):/i)) {
+        currentY += 6;
+        doc.font('Helvetica-Bold').fontSize(9.5).fillColor(c);
+        doc.text(trimmed, ml, currentY, { width: pw, lineGap: 1 });
+        currentY = doc.y + 4;
+      } else if (trimmed.match(/^(CONSIDERANDO|PARTE )/i)) {
+        currentY += 4;
+        doc.font('Helvetica-Bold').fontSize(9).fillColor('#555');
+        doc.text(trimmed, ml, currentY, { width: pw, lineGap: 1 });
+        currentY = doc.y + 3;
+      } else if (trimmed.match(/^_{3,}/) || trimmed.match(/^─{3,}/)) {
+        currentY += 6;
+      } else if (trimmed === '' || trimmed.match(/^={3,}/)) {
+        currentY += 4;
+      } else {
+        doc.font('Helvetica').fontSize(9.5).fillColor('#333');
+        doc.text(trimmed, ml, currentY, { width: pw, align: 'justify', lineGap: 2 });
+        currentY = doc.y + 3;
+      }
     }
 
-    const footerY = Math.max(currentY + 30, 700);
-    doc.moveTo(ml, footerY).lineTo(ml + pw, footerY).lineWidth(0.5).strokeColor('#ddd').stroke();
-    doc.fontSize(7.5).font('Helvetica').fillColor('#aaa')
-      .text('Spectra Platform · Vista previa generada electrónicamente', ml, footerY + 5, { align: 'center', width: pw });
+    // Footer
+    doc.moveTo(ml, 800).lineTo(ml + pw, 800).lineWidth(0.3).strokeColor('#ddd').stroke();
+    doc.fontSize(7).font('Helvetica').fillColor('#bbb')
+      .text('Spectra Platform · Vista previa de plantilla', ml, 805, { width: pw, align: 'center' });
+
     doc.end();
   }
 
@@ -114,104 +152,197 @@ export class ContractsController {
   @UseGuards(JwtAuthGuard)
   async getPdf(@Param('id') id: string, @Res() res: Response) {
     const contract = await this.contractsService.findById(+id);
-    const doc = new PDFDocument({ margin: 60, size: 'A4' });
+    const doc = new PDFDocument({ margin: 50, size: 'A4', info: {
+      Title: contract.title,
+      Author: 'Spectra Platform',
+      Subject: 'Contrato Profesional',
+      Creator: 'Spectra Platform',
+    }});
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="contrato-${contract.id}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="contrato-${String(contract.id).padStart(6, '0')}.pdf"`);
     doc.pipe(res);
 
     const c = '#006d70';
-    const ml = 60;
-    const pw = 475;
+    const cDark = '#004d50';
+    const ml = 50;
+    const mr = 50;
+    const pw = 595 - ml - mr;
+    const pageW = 595;
+    const totalPages = () => doc.bufferedPageRange().count;
 
-    // --- Header box ---
-    doc.rect(ml, 40, pw, 90).lineWidth(2).strokeColor(c).stroke();
-    doc.fontSize(20).font('Helvetica-Bold').fillColor(c)
-      .text(contract.title, ml, 55, { align: 'center', width: pw });
-    doc.fontSize(9).font('Helvetica').fillColor('#666')
-      .text(`N° ${String(contract.id).padStart(6, '0')} · ${new Date().toLocaleDateString('es', { day: '2-digit', month: 'long', year: 'numeric' })}`, { align: 'center', width: pw });
-    doc.moveDown(0.3);
-    doc.fontSize(8).font('Helvetica-Oblique').fillColor('#999')
-      .text('Documento electrónico con validez legal', { align: 'center', width: pw });
+    const drawPageNumber = (pg: number) => {
+      doc.fontSize(8).font('Helvetica').fillColor('#999');
+      doc.text(`Página ${pg}`, ml, 810, { width: pw, align: 'center' });
+      doc.moveTo(ml, 800).lineTo(ml + pw, 800).lineWidth(0.3).strokeColor('#ddd').stroke();
+    };
 
-    // --- Parties info ---
-    const infoY = 150;
-    doc.rect(ml, infoY - 5, pw, 55).lineWidth(0.5).strokeColor('#ddd').stroke();
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#333')
-      .text('CONTRATANTE', ml + 10, infoY + 3);
-    doc.fontSize(9.5).font('Helvetica').fillColor('#333')
-      .text(contract.tenantName || `ID ${contract.tenantUserId}`, ml + 10, infoY + 18);
-    doc.fontSize(9).font('Helvetica-Bold').fillColor('#333')
-      .text('CONTRATISTA', ml + pw / 2 + 5, infoY + 3);
-    doc.fontSize(9.5).font('Helvetica').fillColor('#333')
-      .text(contract.freelancerName || `ID ${contract.freelancerUserId}`, ml + pw / 2 + 5, infoY + 18);
+    const drawHeader = () => {
+      // Top accent line
+      doc.rect(0, 0, pageW, 4).fill(c);
 
-    // --- Divider ---
-    const divY = infoY + 60;
-    doc.moveTo(ml, divY).lineTo(ml + pw, divY).lineWidth(1.5).strokeColor(c).stroke();
-    doc.fontSize(8).font('Helvetica').fillColor('#999')
-      .text('CLÁUSULAS', ml, divY + 6, { align: 'center', width: pw });
+      // Header box
+      doc.roundedRect(ml, 25, pw, 100, 4).lineWidth(1.5).strokeColor(c).stroke();
 
-    // --- Content ---
-    const startY = divY + 22;
+      // Logo area / brand
+      doc.fontSize(11).font('Helvetica-Bold').fillColor(c)
+        .text('SPECTRA', ml + 20, 35, { width: pw - 40 });
+      doc.fontSize(7).font('Helvetica').fillColor('#999')
+        .text('PLATAFORMA DE GESTIÓN PROFESIONAL', ml + 20, 50, { width: pw - 40 });
+
+      // Separator line inside header
+      doc.moveTo(ml + 20, 62).lineTo(ml + pw - 20, 62).lineWidth(0.5).strokeColor('#ddd').stroke();
+
+      // Title
+      doc.fontSize(16).font('Helvetica-Bold').fillColor(cDark)
+        .text(contract.title.toUpperCase(), ml + 20, 72, { width: pw - 40, align: 'center' });
+
+      // Contract number and date
+      const contractNumber = `N° ${String(contract.id).padStart(6, '0')}`;
+      const dateStr = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
+      doc.fontSize(9).font('Helvetica').fillColor('#666')
+        .text(`${contractNumber} · ${dateStr}`, ml + 20, 95, { width: pw - 40, align: 'center' });
+
+      doc.fontSize(7).font('Helvetica-Oblique').fillColor('#aaa')
+        .text('Documento electrónico con validez legal', ml + 20, 108, { width: pw - 40, align: 'center' });
+
+      // Bottom accent line
+      doc.rect(0, 130, pageW, 1).fill(c);
+    };
+
+    drawHeader();
+    drawPageNumber(1);
+
+    // --- Parties section ---
+    let currentY = 145;
+
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(c)
+      .text('PARTES CONTRATANTES', ml, currentY, { width: pw });
+    currentY += 14;
+
+    // Parties box
+    const partiesH = 52;
+    doc.roundedRect(ml, currentY, pw, partiesH, 3).lineWidth(0.5).strokeColor('#e0e0e0').fillAndStroke('#fafafa', '#e0e0e0');
+
+    // Left: Contratante
+    doc.fontSize(7).font('Helvetica-Bold').fillColor('#888')
+      .text('CONTRATANTE', ml + 15, currentY + 8);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#333')
+      .text(contract.tenantName || `Usuario ID ${contract.tenantUserId}`, ml + 15, currentY + 22, { width: pw / 2 - 25 });
+
+    // Right: Contratista
+    doc.fontSize(7).font('Helvetica-Bold').fillColor('#888')
+      .text('CONTRATISTA', ml + pw / 2 + 5, currentY + 8);
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#333')
+      .text(contract.freelancerName || `Usuario ID ${contract.freelancerUserId}`, ml + pw / 2 + 5, currentY + 22, { width: pw / 2 - 25 });
+
+    // Vertical divider
+    doc.moveTo(ml + pw / 2, currentY + 5).lineTo(ml + pw / 2, currentY + partiesH - 5).lineWidth(0.3).strokeColor('#ddd').stroke();
+
+    currentY += partiesH + 15;
+
+    // --- Content section ---
+    doc.moveTo(ml, currentY).lineTo(ml + pw, currentY).lineWidth(0.5).strokeColor(c).stroke();
+    currentY += 8;
+
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(c)
+      .text('CONTENIDO DEL CONTRATO', ml, currentY, { width: pw, align: 'center' });
+    currentY += 16;
+
     const stripHtml = (html: string) => html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
     const text = stripHtml(contract.content);
     const lines = text.split('\n').filter((l) => l.trim());
 
-    let currentY = startY;
-    const lineHeight = 18;
+    let pageCount = 1;
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (currentY > 720) {
+      if (currentY > 750) {
         doc.addPage();
-        currentY = 60;
+        pageCount++;
+        currentY = 50;
+        drawPageNumber(pageCount);
       }
 
-      if (trimmed.startsWith('CONTRATO') || trimmed.match(/^[A-ZÁÉÍÓÚÑ\s]{4,}$/)) {
-        doc.font('Helvetica-Bold').fontSize(12).fillColor(c);
-        currentY += 4;
-      } else if (trimmed.match(/^(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA|SÉPTIMA|OCTAVA|NOVENA|DÉCIMA):/)) {
-        doc.font('Helvetica-Bold').fontSize(10).fillColor(c);
-        currentY += 4;
-      } else if (trimmed.startsWith('_') || trimmed.match(/^_{3,}/)) {
-        currentY += 8;
-        continue;
-      } else {
-        doc.font('Helvetica').fontSize(10).fillColor('#333');
+      // Title lines (CONTRATO ..., header-like lines)
+      if (trimmed.match(/^CONTRATO|^ACUERDO/) || trimmed.match(/^[A-ZÁÉÍÓÚÑ\s]{10,}$/)) {
+        doc.font('Helvetica-Bold').fontSize(11).fillColor(cDark);
+        currentY += 6;
+        doc.text(trimmed, ml, currentY, { width: pw, align: 'center', lineGap: 1 });
+        currentY = doc.y + 6;
       }
-
-      doc.text(trimmed, ml, currentY, { width: pw, align: 'justify', lineGap: 2 });
-      currentY = doc.y + 4;
+      // Clause headers
+      else if (trimmed.match(/^(PRIMERA|SEGUNDA|TERCERA|CUARTA|QUINTA|SEXTA|SÉPTIMA|OCTAVA|NOVENA|DÉCIMA|CLÁUSULAS?):/i)) {
+        currentY += 6;
+        doc.font('Helvetica-Bold').fontSize(9.5).fillColor(c);
+        doc.text(trimmed, ml, currentY, { width: pw, lineGap: 1 });
+        currentY = doc.y + 4;
+      }
+      // Considerando / heading-like lines
+      else if (trimmed.match(/^(CONSIDERANDO|PARTE )/i)) {
+        currentY += 4;
+        doc.font('Helvetica-Bold').fontSize(9).fillColor('#555');
+        doc.text(trimmed, ml, currentY, { width: pw, lineGap: 1 });
+        currentY = doc.y + 3;
+      }
+      // Signature lines / dashes
+      else if (trimmed.match(/^_{3,}/) || trimmed.match(/^─{3,}/)) {
+        currentY += 6;
+      }
+      // Empty lines / separator
+      else if (trimmed === '' || trimmed.match(/^={3,}/)) {
+        currentY += 4;
+      }
+      // Regular paragraph
+      else {
+        doc.font('Helvetica').fontSize(9.5).fillColor('#333');
+        doc.text(trimmed, ml, currentY, { width: pw, align: 'justify', lineGap: 2 });
+        currentY = doc.y + 3;
+      }
     }
 
     // --- Signature section ---
-    if (currentY > 660) doc.addPage();
-    const sigY = Math.max(currentY + 30, 680);
-    doc.moveTo(ml, sigY).lineTo(ml + pw, sigY).lineWidth(0.5).strokeColor('#ccc').stroke();
+    if (currentY > 620) {
+      doc.addPage();
+      pageCount++;
+      currentY = 60;
+      drawPageNumber(pageCount);
+    }
 
-    doc.fontSize(10).font('Helvetica-Bold').fillColor('#333')
-      .text('FIRMAS', ml, sigY + 10, { align: 'center', width: pw });
+    currentY += 20;
+    doc.moveTo(ml, currentY).lineTo(ml + pw, currentY).lineWidth(0.5).strokeColor(c).stroke();
+    currentY += 10;
 
-    const lineLen = 180;
-    const gap = 30;
-    const sigLineY = sigY + 45;
-
-    doc.moveTo(ml + 40, sigLineY).lineTo(ml + 40 + lineLen, sigLineY).lineWidth(1).strokeColor('#333').stroke();
-    doc.moveTo(ml + pw - 40 - lineLen, sigLineY).lineTo(ml + pw - 40, sigLineY).lineWidth(1).strokeColor('#333').stroke();
-
-    doc.fontSize(9).font('Helvetica').fillColor('#333')
-      .text(contract.tenantName || 'CONTRATANTE', ml + 40, sigLineY + 5, { width: lineLen, align: 'center' });
-    doc.text(contract.freelancerName || 'CONTRATISTA', ml + pw - 40 - lineLen, sigLineY + 5, { width: lineLen, align: 'center' });
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(c)
+      .text('FIRMAS', ml, currentY, { width: pw, align: 'center' });
+    currentY += 8;
 
     doc.fontSize(7).font('Helvetica-Oblique').fillColor('#999')
-      .text('CONTRATANTE', ml + 40, sigLineY + 18, { width: lineLen, align: 'center' });
-    doc.text('CONTRATISTA', ml + pw - 40 - lineLen, sigLineY + 18, { width: lineLen, align: 'center' });
+      .text('Las partes firman el presente contrato en dos ejemplares del mismo tenor y a un solo efecto.', ml, currentY, { width: pw, align: 'center' });
+    currentY += 20;
+
+    const sigLineW = 170;
+    const leftSigX = ml + 20;
+    const rightSigX = ml + pw - 20 - sigLineW;
+
+    // Signature lines
+    doc.moveTo(leftSigX, currentY).lineTo(leftSigX + sigLineW, currentY).lineWidth(1).strokeColor('#333').stroke();
+    doc.moveTo(rightSigX, currentY).lineTo(rightSigX + sigLineW, currentY).lineWidth(1).strokeColor('#333').stroke();
+
+    currentY += 6;
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#333')
+      .text(contract.tenantName || 'CONTRATANTE', leftSigX, currentY, { width: sigLineW, align: 'center' });
+    doc.text(contract.freelancerName || 'CONTRATISTA', rightSigX, currentY, { width: sigLineW, align: 'center' });
+
+    currentY += 14;
+    doc.fontSize(7).font('Helvetica').fillColor('#999')
+      .text('CONTRATANTE', leftSigX, currentY, { width: sigLineW, align: 'center' });
+    doc.text('CONTRATISTA', rightSigX, currentY, { width: sigLineW, align: 'center' });
 
     // --- Footer ---
-    const footerY = sigLineY + 45;
-    doc.moveTo(ml, footerY).lineTo(ml + pw, footerY).lineWidth(0.5).strokeColor('#ddd').stroke();
-    doc.fontSize(7.5).font('Helvetica').fillColor('#aaa')
-      .text('Spectra Platform · Documento generado electrónicamente · ID: ' + contract.id, ml, footerY + 5, { align: 'center', width: pw });
+    const footerY = currentY + 30;
+    doc.moveTo(ml, footerY).lineTo(ml + pw, footerY).lineWidth(0.3).strokeColor('#ddd').stroke();
+    doc.fontSize(7).font('Helvetica').fillColor('#bbb')
+      .text(`Spectra Platform · Documento generado electrónicamente · Contrato N° ${String(contract.id).padStart(6, '0')}`, ml, footerY + 5, { width: pw, align: 'center' });
 
     doc.end();
   }
