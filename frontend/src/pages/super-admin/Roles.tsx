@@ -26,7 +26,7 @@ export default function Roles() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/custom-roles').then((r) => setRoles(r.data)),
+      api.get('/custom-roles').then((r) => setRoles(r.data.data || r.data)),
       api.get('/modules').then((r) => setModules(r.data)),
     ]);
   }, []);
@@ -69,7 +69,7 @@ export default function Roles() {
       if (editing) await api.put(`/custom-roles/${editing.id}`, payload);
       else await api.post('/custom-roles', payload);
       setShowForm(false); setEditing(null);
-      api.get('/custom-roles').then((r) => setRoles(r.data));
+      api.get('/custom-roles').then((r) => setRoles(r.data.data || r.data));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al guardar');
     } finally {
@@ -82,7 +82,7 @@ export default function Roles() {
     try {
       await api.delete(`/custom-roles/${deleteTarget.id}`);
       setDeleteTarget(null);
-      api.get('/custom-roles').then((r) => setRoles(r.data));
+      api.get('/custom-roles').then((r) => setRoles(r.data.data || r.data));
     } catch {
       setError('Error al eliminar');
       setDeleteTarget(null);

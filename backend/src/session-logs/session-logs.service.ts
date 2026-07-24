@@ -15,12 +15,17 @@ export class SessionLogsService {
     await this.repo.save(entry);
   }
 
-  async findAll(page = 1, limit = 50) {
-    const [data, total] = await this.repo.findAndCount({
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async findAll(page = 1, limit = 50, search?: string) {
+    const qb = this.repo.createQueryBuilder('log')
+      .orderBy('log.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (search) {
+      qb.andWhere('(log.userName LIKE :search OR log.action LIKE :search OR log.entityType LIKE :search)', { search: `%${search}%` });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 }

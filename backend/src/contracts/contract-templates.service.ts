@@ -12,10 +12,16 @@ export class ContractTemplatesService {
     private repo: Repository<ContractTemplate>,
   ) {}
 
-  async findAll(userId?: number) {
+  async findAll(userId?: number, page = 1, limit = 50) {
     const where: any = {};
     if (userId) where.createdByUserId = userId;
-    return this.repo.find({ where, order: { name: 'ASC' } });
+    const [data, total] = await this.repo.findAndCount({
+      where,
+      order: { name: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: number) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { HiOutlineHome, HiOutlineBuildingOffice2, HiOutlineShieldCheck, HiOutlineUsers, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineChartBarSquare, HiOutlineClipboardDocumentCheck, HiOutlineComputerDesktop, HiOutlineDocumentText, HiOutlineCog6Tooth } from 'react-icons/hi2';
+import { useTranslation } from 'react-i18next';
 import api from '../../api/axios';
 import AdminSidebar from '../../components/AdminSidebar';
 import Dashboard from './Dashboard';
@@ -34,6 +35,7 @@ export default function SuperAdminPanel() {
   const active = searchParams.get('tab') || 'dashboard';
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modules, setModules] = useState<{ key: string; label: string }[]>([]);
+  const { t } = useTranslation();
 
   useEffect(() => {
     api.get('/modules').then((r) => setModules(r.data));
@@ -41,7 +43,7 @@ export default function SuperAdminPanel() {
 
   const sidebarModules = modules.map((m) => ({
     key: m.key,
-    label: m.label,
+    label: t(`modules.${m.key}`, m.label),
     icon: iconMap[m.key] || HiOutlineHome,
   }));
 

@@ -2,12 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { HiOutlineBolt, HiOutlineArrowRightOnRectangle, HiOutlineChevronDown } from 'react-icons/hi2';
-
-const roleLabels: Record<string, string> = {
-  super_admin: 'Super Admin',
-  admin_tenant: 'Admin Tenant',
-  freelance: 'Freelance',
-};
+import { useTranslation } from 'react-i18next';
 
 const roleColors: Record<string, string> = {
   super_admin: 'bg-purple-100 text-purple-700',
@@ -19,12 +14,23 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t, i18n } = useTranslation();
+  const [langOpen, setLangOpen] = useState(false);
+
+  const roleLabel = (role: string) => t(`roles.${role}`, role);
 
   const handleLogout = () => {
     setMenuOpen(false);
     logout();
     navigate('/login');
   };
+
+  const changeLang = (lng: string) => {
+    i18n.changeLanguage(lng);
+    setLangOpen(false);
+  };
+
+  const currentLang = i18n.language?.substring(0, 2) || 'es';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,11 +42,26 @@ export default function Layout() {
             </div>
             <span className="text-xl font-bold text-gray-900">Spectra</span>
             <span className={`hidden sm:inline-flex text-xs font-medium px-2.5 py-0.5 rounded-full ${roleColors[user?.role || '']}`}>
-              {roleLabels[user?.role || '']}
+              {roleLabel(user?.role || '')}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button onClick={() => setLangOpen(!langOpen)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-gray-50 transition text-sm font-medium text-gray-600">
+                {currentLang === 'es' ? 'ES' : 'EN'}
+              </button>
+              {langOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setLangOpen(false)}></div>
+                  <div className="absolute right-0 top-full mt-1 w-28 bg-white rounded-xl shadow-lg border border-gray-100 py-1.5 z-20">
+                    <button onClick={() => changeLang('es')} className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 transition ${currentLang === 'es' ? 'font-semibold text-primary-600' : 'text-gray-700'}`}>Español</button>
+                    <button onClick={() => changeLang('en')} className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 transition ${currentLang === 'en' ? 'font-semibold text-primary-600' : 'text-gray-700'}`}>English</button>
+                  </div>
+                </>
+              )}
+            </div>
             <div className="relative">
               <button onClick={() => setMenuOpen(!menuOpen)}
                 className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl hover:bg-gray-50 transition group">
@@ -64,13 +85,13 @@ export default function Layout() {
                     </div>
                     <div className="px-3 py-1.5 flex items-center gap-2 text-xs text-gray-400">
                       <span className={`inline-flex text-xs font-medium px-2 py-0.5 rounded-full ${roleColors[user?.role || '']}`}>
-                        {roleLabels[user?.role || '']}
+                        {roleLabel(user?.role || '')}
                       </span>
                     </div>
                     <button onClick={handleLogout}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition font-medium">
                       <HiOutlineArrowRightOnRectangle className="w-4 h-4" />
-                      Cerrar sesión
+                      {t('nav.logout')}
                     </button>
                   </div>
                 </>

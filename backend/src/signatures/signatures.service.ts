@@ -18,10 +18,17 @@ export class SignaturesService {
     private emailService: EmailService,
   ) {}
 
-  async findAll(ownerUserId?: number) {
+  async findAll(ownerUserId?: number, page = 1, limit = 50) {
     const where: any = {};
     if (ownerUserId) where.ownerUserId = ownerUserId;
-    return this.docRepo.find({ where, relations: ['signers'], order: { createdAt: 'DESC' }, take: 200 });
+    const [data, total] = await this.docRepo.findAndCount({
+      where,
+      relations: ['signers'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: number) {

@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
 import { HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineComputerDesktop, HiOutlineClock } from 'react-icons/hi2';
+import { useTranslation } from 'react-i18next';
 import { sessionLogService } from '../../services/api';
+import { useDebounce } from '../../hooks/useDebounce';
 import type { SessionLog } from '../../types';
 
 export default function SessionLogs() {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState<SessionLog[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [fetching, setFetching] = useState(false);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
 
   const load = async () => {
     setFetching(true);
     try {
-      const result = await sessionLogService.list(page, 50);
+      const result = await sessionLogService.list(page, 50, debouncedSearch);
       setLogs(result.data);
       setTotalPages(result.totalPages);
       setTotal(result.total);
@@ -22,7 +27,7 @@ export default function SessionLogs() {
     } finally { setFetching(false); }
   };
 
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => { load(); }, [page, debouncedSearch]);
 
   const parseUserAgent = (ua?: string) => {
     if (!ua) return '—';
@@ -55,8 +60,19 @@ export default function SessionLogs() {
           <HiOutlineComputerDesktop className="w-5 h-5 text-blue-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Historial de sesiones</h1>
-          <p className="text-sm text-gray-500">Todos los inicios de sesión de los usuarios</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('sessionLogs.title')}</h1>
+          <p className="text-sm text-gray-500">{t('sessionLogs.subtitle')}</p>
+        </div>
+      </div>
+
+      <div className="mb-5">
+        <div className="relative max-w-sm">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input type="text" placeholder={t('sessionLogs.searchPlaceholder')}
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-white"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -71,11 +87,11 @@ export default function SessionLogs() {
             <thead>
               <tr className="text-left text-gray-500 border-b bg-gray-50">
                 <th className="px-4 py-3">#</th>
-                <th className="px-4 py-3">Usuario</th>
-                <th className="px-4 py-3">Rol</th>
-                <th className="px-4 py-3">IP</th>
-                <th className="px-4 py-3">Navegador</th>
-                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">{t('sessionLogs.user')}</th>
+                <th className="px-4 py-3">{t('sessionLogs.role')}</th>
+                <th className="px-4 py-3">{t('sessionLogs.ip')}</th>
+                <th className="px-4 py-3">{t('sessionLogs.browser')}</th>
+                <th className="px-4 py-3">{t('sessionLogs.date')}</th>
               </tr>
             </thead>
             <tbody>
@@ -98,7 +114,7 @@ export default function SessionLogs() {
               {logs.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-400">
                   <HiOutlineClock className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                  No hay sesiones registradas
+                  {t('sessionLogs.noSessions')}
                 </td></tr>
               )}
             </tbody>

@@ -23,8 +23,8 @@ export class KycController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('status') status?: string) {
-    return this.service.findAll(Number(page) || 1, Math.min(Number(limit) || 50, 100), status);
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('status') status?: string, @Query('search') search?: string) {
+    return this.service.findAll(Number(page) || 1, Math.min(Number(limit) || 50, 100), status, search);
   }
 
   @Get('stats')
@@ -37,8 +37,8 @@ export class KycController {
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
-  findOne(@Param('id') id: string) {
-    return this.service.findById(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.service.findById(id);
   }
 
   @Post('upload/:userId/:userType')
@@ -77,21 +77,21 @@ export class KycController {
   @Put('approve/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
-  approve(@Param('id') id: string) {
-    return this.service.approve(+id);
+  approve(@Param('id', ParseIntPipe) id: number) {
+    return this.service.approve(id);
   }
 
   @Put('reject/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
-  reject(@Param('id') id: string, @Body() dto: RejectKycDto) {
-    return this.service.reject(+id, dto.adminNotes);
+  reject(@Param('id', ParseIntPipe) id: number, @Body() dto: RejectKycDto) {
+    return this.service.reject(id, dto.adminNotes);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
-  remove(@Param('id') id: string) {
-    return this.service.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.remove(id);
   }
 }

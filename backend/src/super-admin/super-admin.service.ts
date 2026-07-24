@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from '../users/user.entity';
 import { EmailService } from '../email/email.service';
@@ -33,14 +33,19 @@ export class SuperAdminService {
     };
   }
 
-  async getAdminTenants(page = 1, limit = 50) {
-    const [data, total] = await this.usersRepository.findAndCount({
-      where: { role: UserRole.ADMIN_TENANT },
-      relations: ['tenant'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async getAdminTenants(page = 1, limit = 50, search?: string) {
+    const qb = this.usersRepository.createQueryBuilder('user')
+      .leftJoinAndSelect('user.tenant', 'tenant')
+      .where('user.role = :role', { role: UserRole.ADMIN_TENANT })
+      .orderBy('user.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (search) {
+      qb.andWhere('(user.name LIKE :search OR user.email LIKE :search)', { search: `%${search}%` });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
@@ -97,14 +102,20 @@ export class SuperAdminService {
     return this.usersRepository.remove(user);
   }
 
-  async getFreelancers(page = 1, limit = 50) {
-    const [data, total] = await this.usersRepository.findAndCount({
-      where: { role: UserRole.FREELANCE },
-      relations: ['tenant', 'area'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async getFreelancers(page = 1, limit = 50, search?: string) {
+    const qb = this.usersRepository.createQueryBuilder('user')
+      .leftJoinAndSelect('user.tenant', 'tenant')
+      .leftJoinAndSelect('user.area', 'area')
+      .where('user.role = :role', { role: UserRole.FREELANCE })
+      .orderBy('user.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (search) {
+      qb.andWhere('(user.name LIKE :search OR user.email LIKE :search OR user.code LIKE :search)', { search: `%${search}%` });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 

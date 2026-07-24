@@ -27,7 +27,7 @@ export default function SignaturesPage() {
 
   const load = async () => {
     setFetching(true); setError('');
-    try { const r = await api.get('/signatures'); setDocs(r.data); } catch { setError('Error al cargar documentos'); }
+    try { const r = await api.get('/signatures'); setDocs(r.data.data || r.data); } catch { setError('Error al cargar documentos'); }
     finally { setFetching(false); }
   };
   useEffect(() => { load(); }, []);

@@ -21,7 +21,7 @@ export default function AreasModal({ open, onClose }: Props) {
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Area | null>(null);
 
-  const load = () => api.get('/areas').then((r) => setAreas(r.data));
+  const load = () => api.get('/areas').then((r) => setAreas(r.data.data || r.data));
   useEffect(() => { if (open) load(); }, [open]);
 
   const openCreate = () => { setEditing(null); setForm({ name: '', description: '' }); setError(''); setShowForm(true); };

@@ -11,7 +11,7 @@ export class SessionLogsController {
   constructor(private service: SessionLogsService) {}
 
   @Get()
-  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.service.findAll(Number(page) || 1, Math.min(Number(limit) || 50, 100));
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string, @Query('search') search?: string) {
+    return this.service.findAll(Number(page) || 1, Math.min(Number(limit) || 50, 100), search);
   }
 }

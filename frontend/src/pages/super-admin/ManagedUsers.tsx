@@ -37,7 +37,7 @@ export default function ManagedUsers() {
   const load = async () => {
     const [u, r] = await Promise.all([api.get('/managed-users'), api.get('/custom-roles')]);
     setUsers(u.data.data);
-    setRoles(r.data);
+    setRoles(r.data.data || r.data);
   };
   useEffect(() => { load(); }, []);
 

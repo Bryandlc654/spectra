@@ -15,8 +15,14 @@ export class CustomRolesService {
     private permRepo: Repository<RolePermission>,
   ) {}
 
-  async findAll() {
-    return this.repo.find({ relations: ['permissions'], order: { createdAt: 'DESC' } });
+  async findAll(page = 1, limit = 50) {
+    const [data, total] = await this.repo.findAndCount({
+      relations: ['permissions'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: number) {

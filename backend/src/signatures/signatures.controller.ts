@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Delete, Param, Body, UseGuards, UseInterceptors,
+  Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, UseInterceptors,
   UploadedFile, Req, Res, BadRequestException, NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -25,9 +25,9 @@ export class SignaturesController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@Req() req: any) {
+  findAll(@Req() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
     const userId = req.user.role === 'super_admin' ? undefined : req.user.id;
-    return this.service.findAll(userId);
+    return this.service.findAll(userId, Number(page) || 1, Math.min(Number(limit) || 50, 100));
   }
 
   @Get(':id')

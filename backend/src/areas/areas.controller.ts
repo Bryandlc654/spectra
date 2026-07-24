@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { AreasService } from './areas.service';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
@@ -13,7 +13,9 @@ export class AreasController {
   constructor(private service: AreasService) {}
 
   @Get()
-  findAll() { return this.service.findAll(); }
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.service.findAll(Number(page) || 1, Math.min(Number(limit) || 50, 100));
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) { return this.service.findById(+id); }

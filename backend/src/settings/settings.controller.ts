@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Body, Query, UseGuards } from '@nestjs/common';
 import { SettingsService } from './settings.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -11,8 +11,8 @@ export class SettingsController {
   constructor(private service: SettingsService) {}
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.service.findAll(Number(page) || 1, Math.min(Number(limit) || 100, 200));
   }
 
   @Put()

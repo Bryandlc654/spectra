@@ -12,12 +12,22 @@ export class ContractsService {
     private templatesService: ContractTemplatesService,
   ) {}
 
-  async findAll(filters?: { tenantUserId?: number; freelancerUserId?: number; status?: string }) {
-    const where: any = {};
-    if (filters?.tenantUserId) where.tenantUserId = filters.tenantUserId;
-    if (filters?.freelancerUserId) where.freelancerUserId = filters.freelancerUserId;
-    if (filters?.status) where.status = filters.status;
-    return this.repo.find({ where, relations: ['template'], order: { createdAt: 'DESC' }, take: 200 });
+  async findAll(filters?: { tenantUserId?: number; freelancerUserId?: number; status?: string; search?: string }, page = 1, limit = 50) {
+    const qb = this.repo.createQueryBuilder('contract')
+      .leftJoinAndSelect('contract.template', 'template')
+      .orderBy('contract.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (filters?.tenantUserId) qb.andWhere('contract.tenantUserId = :tenantUserId', { tenantUserId: filters.tenantUserId });
+    if (filters?.freelancerUserId) qb.andWhere('contract.freelancerUserId = :freelancerUserId', { freelancerUserId: filters.freelancerUserId });
+    if (filters?.status) qb.andWhere('contract.status = :status', { status: filters.status });
+    if (filters?.search) {
+      qb.andWhere('(contract.title LIKE :search OR contract.freelancerName LIKE :search OR contract.tenantName LIKE :search)', { search: `%${filters.search}%` });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findById(id: number) {

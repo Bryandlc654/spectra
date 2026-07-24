@@ -10,8 +10,13 @@ export class SettingsService {
     private repo: Repository<Setting>,
   ) {}
 
-  async findAll() {
-    return this.repo.find({ order: { key: 'ASC' } });
+  async findAll(page = 1, limit = 100) {
+    const [data, total] = await this.repo.findAndCount({
+      order: { key: 'ASC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async get(key: string): Promise<string | null> {
@@ -40,7 +45,7 @@ export class SettingsService {
   }
 
   async setBulk(entries: { key: string; value: string }[]) {
-    if (entries.length === 0) return this.findAll();
+    if (entries.length === 0) return this.findAll(1, 1000);
     const keys = entries.map((e) => e.key);
     const existing = await this.repo.find({ where: keys.map((k) => ({ key: k })) });
     const existingMap = new Map(existing.map((s) => [s.key, s]));
@@ -56,7 +61,7 @@ export class SettingsService {
       }
     }
     await this.repo.save(toSave);
-    return this.findAll();
+    return this.findAll(1, 1000);
   }
 
   async remove(key: string) {

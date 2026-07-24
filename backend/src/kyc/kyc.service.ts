@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { KycRequest, KycStatus } from './kyc-request.entity';
 import { KycDocument } from './kyc-document.entity';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class KycService {
@@ -11,18 +12,23 @@ export class KycService {
     private repo: Repository<KycRequest>,
     @InjectRepository(KycDocument)
     private docRepo: Repository<KycDocument>,
+    private emailService: EmailService,
   ) {}
 
-  async findAll(page = 1, limit = 50, status?: string) {
-    const where: any = {};
-    if (status) where.status = status;
-    const [data, total] = await this.repo.findAndCount({
-      where,
-      relations: ['documents', 'user'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async findAll(page = 1, limit = 50, status?: string, search?: string) {
+    const qb = this.repo.createQueryBuilder('kyc')
+      .leftJoinAndSelect('kyc.documents', 'docs')
+      .leftJoinAndSelect('kyc.user', 'user')
+      .orderBy('kyc.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (status) qb.andWhere('kyc.status = :status', { status });
+    if (search) {
+      qb.andWhere('(user.name LIKE :search OR user.email LIKE :search)', { search: `%${search}%` });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
@@ -57,14 +63,32 @@ export class KycService {
   async approve(id: number) {
     const req = await this.findById(id);
     req.status = KycStatus.APPROVED;
-    return this.repo.save(req);
+    const saved = await this.repo.save(req);
+
+    // Fire-and-forget email notification
+    if (req.user?.email) {
+      this.emailService.sendKycStatusChanged(req.user.email, req.user.name || '', 'approved').catch((err) => {
+        console.error('Failed to send KYC approved email:', err.message);
+      });
+    }
+
+    return saved;
   }
 
   async reject(id: number, adminNotes: string) {
     const req = await this.findById(id);
     req.status = KycStatus.REJECTED;
     req.adminNotes = adminNotes;
-    return this.repo.save(req);
+    const saved = await this.repo.save(req);
+
+    // Fire-and-forget email notification
+    if (req.user?.email) {
+      this.emailService.sendKycStatusChanged(req.user.email, req.user.name || '', 'rejected', adminNotes).catch((err) => {
+        console.error('Failed to send KYC rejected email:', err.message);
+      });
+    }
+
+    return saved;
   }
 
   async remove(id: number) {

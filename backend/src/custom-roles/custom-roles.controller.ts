@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { CustomRolesService } from './custom-roles.service';
 import { CreateCustomRoleDto } from './dto/create-custom-role.dto';
 import { UpdateCustomRoleDto } from './dto/update-custom-role.dto';
@@ -13,7 +13,9 @@ export class CustomRolesController {
   constructor(private service: CustomRolesService) {}
 
   @Get()
-  findAll() { return this.service.findAll(); }
+  findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.service.findAll(Number(page) || 1, Math.min(Number(limit) || 50, 100));
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) { return this.service.findById(+id); }

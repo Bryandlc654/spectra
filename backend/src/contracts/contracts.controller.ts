@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Req, Res, Query, ParseIntPipe } from '@nestjs/common';
 import { Response } from 'express';
 const PDFDocument = require('pdfkit');
 import { ContractTemplatesService } from './contract-templates.service';
 import { ContractsService } from './contracts.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
+import { CreateContractDto } from './dto/create-contract.dto';
+import { UpdateContractStatusDto } from './dto/update-contract-status.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -18,14 +20,14 @@ export class ContractsController {
 
   @Get('templates')
   @UseGuards(JwtAuthGuard)
-  getTemplates(@Req() req: any) {
+  getTemplates(@Req() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
     const userId = req.user.role === 'super_admin' ? undefined : req.user.id;
-    return this.templatesService.findAll(userId);
+    return this.templatesService.findAll(userId, Number(page) || 1, Math.min(Number(limit) || 50, 100));
   }
 
   @Get('templates/:id')
   @UseGuards(JwtAuthGuard)
-  getTemplate(@Param('id') id: string) { return this.templatesService.findById(+id); }
+  getTemplate(@Param('id', ParseIntPipe) id: number) { return this.templatesService.findById(id); }
 
   @Post('templates')
   @UseGuards(JwtAuthGuard)
@@ -35,8 +37,8 @@ export class ContractsController {
 
   @Get('templates/:id/pdf')
   @UseGuards(JwtAuthGuard)
-  async getTemplatePdf(@Param('id') id: string, @Res() res: Response) {
-    const tpl = await this.templatesService.findById(+id);
+  async getTemplatePdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const tpl = await this.templatesService.findById(id);
     const doc = new PDFDocument({ margin: 70, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="plantilla-${tpl.id}.pdf"`);
@@ -108,44 +110,46 @@ export class ContractsController {
 
   @Put('templates/:id')
   @UseGuards(JwtAuthGuard)
-  updateTemplate(@Param('id') id: string, @Body() dto: UpdateTemplateDto) { return this.templatesService.update(+id, dto); }
+  updateTemplate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTemplateDto) { return this.templatesService.update(id, dto); }
 
   @Delete('templates/:id')
   @UseGuards(JwtAuthGuard)
-  deleteTemplate(@Param('id') id: string) { return this.templatesService.remove(+id); }
+  deleteTemplate(@Param('id', ParseIntPipe) id: number) { return this.templatesService.remove(id); }
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@Req() req: any) {
+  findAll(@Req() req: any, @Query('page') page?: string, @Query('limit') limit?: string, @Query('status') status?: string, @Query('search') search?: string) {
     const filters: any = {};
     if (req.user.role === 'admin_tenant') filters.tenantUserId = req.user.id;
-    return this.contractsService.findAll(filters);
+    if (status) filters.status = status;
+    if (search) filters.search = search;
+    return this.contractsService.findAll(filters, Number(page) || 1, Math.min(Number(limit) || 50, 100));
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  findOne(@Param('id') id: string) { return this.contractsService.findById(+id); }
+  findOne(@Param('id', ParseIntPipe) id: number) { return this.contractsService.findById(id); }
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Req() req: any, @Body() body: any) {
+  create(@Req() req: any, @Body() dto: CreateContractDto) {
     return this.contractsService.create({
-      ...body,
-      tenantUserId: body.tenantUserId || req.user.id,
-      tenantName: body.tenantName || req.user.name,
+      ...dto,
+      tenantUserId: req.user.id,
+      tenantName: req.user.name,
     });
   }
 
   @Put(':id/status')
   @UseGuards(JwtAuthGuard)
-  updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
-    return this.contractsService.updateStatus(+id, body.status as any);
+  updateStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateContractStatusDto) {
+    return this.contractsService.updateStatus(id, dto.status);
   }
 
   @Get(':id/pdf')
   @UseGuards(JwtAuthGuard)
-  async getPdf(@Param('id') id: string, @Res() res: Response) {
-    const contract = await this.contractsService.findById(+id);
+  async getPdf(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const contract = await this.contractsService.findById(id);
     const doc = new PDFDocument({ margin: 70, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="contrato-${String(contract.id).padStart(6, '0')}.pdf"`);
@@ -344,5 +348,5 @@ export class ContractsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'admin_tenant')
-  remove(@Param('id') id: string) { return this.contractsService.remove(+id); }
+  remove(@Param('id', ParseIntPipe) id: number) { return this.contractsService.remove(id); }
 }

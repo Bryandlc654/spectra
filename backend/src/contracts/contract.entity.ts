@@ -24,6 +24,9 @@ export class Contract {
   tenantUserId: number;
 
   @Column({ nullable: true })
+  tenantId: number;
+
+  @Column({ nullable: true })
   tenantName: string;
 
   @Column()

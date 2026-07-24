@@ -2,8 +2,8 @@ import api from '../api/axios';
 import type { Contract, ContractTemplate, SessionLog, PaginatedResponse, FreelanceProfile, SignerResponse } from '../types';
 
 export const contractService = {
-  list: () => api.get<Contract[]>('/contracts').then((r) => r.data),
-  templates: () => api.get<ContractTemplate[]>('/contracts/templates').then((r) => r.data),
+  list: () => api.get('/contracts').then((r) => r.data.data || r.data),
+  templates: () => api.get('/contracts/templates').then((r) => r.data.data || r.data),
   create: (data: {
     templateId: number;
     freelancerUserId: number;
@@ -19,8 +19,8 @@ export const contractService = {
 };
 
 export const sessionLogService = {
-  list: (page = 1, limit = 50) =>
-    api.get<PaginatedResponse<SessionLog>>('/session-logs', { params: { page, limit } }).then((r) => r.data),
+  list: (page = 1, limit = 50, search?: string) =>
+    api.get<PaginatedResponse<SessionLog>>('/session-logs', { params: { page, limit, ...(search ? { search } : {}) } }).then((r) => r.data),
 };
 
 export const freelanceService = {
