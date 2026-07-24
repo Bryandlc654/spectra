@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminTenantController } from './admin-tenant.controller';
 import { AdminTenantService } from './admin-tenant.service';
@@ -16,6 +17,10 @@ import { EmailModule } from '../email/email.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Contract, ContractTemplate, KycRequest, KycDocument, Area, Tenant]),
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: process.env.JWT_EXPIRATION || '24h' },
+    }),
     ContractsModule,
     KycModule,
     EmailModule,
