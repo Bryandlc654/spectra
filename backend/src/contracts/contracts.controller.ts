@@ -22,17 +22,22 @@ export class ContractsController {
   @UseGuards(JwtAuthGuard)
   getTemplates(@Req() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
     const userId = req.user.role === 'super_admin' ? undefined : req.user.id;
-    return this.templatesService.findAll(userId, Number(page) || 1, Math.min(Number(limit) || 50, 100));
+    const tenantId = req.user.role === 'admin_tenant' ? req.user.tenantId : undefined;
+    return this.templatesService.findAll(userId, tenantId, Number(page) || 1, Math.min(Number(limit) || 50, 100));
   }
 
   @Get('templates/:id')
   @UseGuards(JwtAuthGuard)
-  getTemplate(@Param('id', ParseIntPipe) id: number) { return this.templatesService.findById(id); }
+  getTemplate(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    const tenantId = req.user.role === 'admin_tenant' ? req.user.tenantId : undefined;
+    return this.templatesService.findById(id, tenantId);
+  }
 
   @Post('templates')
   @UseGuards(JwtAuthGuard)
   createTemplate(@Req() req: any, @Body() dto: CreateTemplateDto) {
-    return this.templatesService.create(dto, req.user.id);
+    const tenantId = req.user.role === 'admin_tenant' ? req.user.tenantId : undefined;
+    return this.templatesService.create(dto, req.user.id, tenantId);
   }
 
   @Get('templates/:id/pdf')
@@ -110,11 +115,17 @@ export class ContractsController {
 
   @Put('templates/:id')
   @UseGuards(JwtAuthGuard)
-  updateTemplate(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTemplateDto) { return this.templatesService.update(id, dto); }
+  updateTemplate(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTemplateDto) {
+    const tenantId = req.user.role === 'admin_tenant' ? req.user.tenantId : undefined;
+    return this.templatesService.update(id, dto, tenantId);
+  }
 
   @Delete('templates/:id')
   @UseGuards(JwtAuthGuard)
-  deleteTemplate(@Param('id', ParseIntPipe) id: number) { return this.templatesService.remove(id); }
+  deleteTemplate(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    const tenantId = req.user.role === 'admin_tenant' ? req.user.tenantId : undefined;
+    return this.templatesService.remove(id, tenantId);
+  }
 
   @Get()
   @UseGuards(JwtAuthGuard)

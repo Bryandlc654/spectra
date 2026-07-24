@@ -8,6 +8,7 @@ import { EmailModule } from '../email/email.module';
 import { TenantsModule } from '../tenants/tenants.module';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { KycModule } from '../kyc/kyc.module';
+import { KybModule } from '../kyb/kyb.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { KycModule } from '../kyc/kyc.module';
     TenantsModule,
     ActivityLogsModule,
     KycModule,
+    KybModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '7d' },

@@ -17,6 +17,9 @@ type ContractFormData = {
   startDate?: string;
   endDate?: string;
   amount?: string;
+  firstPaymentDate?: string;
+  paymentFrequency?: string;
+  paymentNotes?: string;
 };
 
 interface Contract {
@@ -25,7 +28,7 @@ interface Contract {
   endDate?: string; template?: { id: number; name: string }; createdAt: string;
 }
 
-interface Template { id: number; name: string; content: string; isActive: boolean; }
+interface Template { id: number; name: string; content: string; isActive: boolean; tenantId?: number; }
 interface FreelancerOption { id: number; name: string; email: string; }
 
 const statusBadge = (s: string) => {
@@ -55,11 +58,15 @@ export default function AdminTenantContracts() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [showForm, setShowForm] = useState(false);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [selected, setSelected] = useState<Contract | null>(null);
   const [editing, setEditing] = useState<Contract | null>(null);
   const [editForm, setEditForm] = useState({ title: '', startDate: '', endDate: '', amount: '' });
+  const [templateForm, setTemplateForm] = useState({ name: '', content: '' });
   const [deleteTarget, setDeleteTarget] = useState<Contract | null>(null);
   const [filterStatus, setFilterStatus] = useState('');
+  const [activeTab, setActiveTab] = useState<'contracts' | 'templates'>('contracts');
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -89,7 +96,7 @@ export default function AdminTenantContracts() {
   useEffect(() => { load(); }, [page]);
 
   const openCreate = () => {
-    reset({ templateId: 0, freelancerUserId: 0, title: '', description: '', startDate: '', endDate: '', amount: '' });
+    reset({ templateId: 0, freelancerUserId: 0, title: '', description: '', startDate: '', endDate: '', amount: '', firstPaymentDate: '', paymentFrequency: '0', paymentNotes: '' });
     setError(''); setShowForm(true);
   };
 
@@ -105,6 +112,9 @@ export default function AdminTenantContracts() {
         startDate: data.startDate || undefined,
         endDate: data.endDate || undefined,
         amount: data.amount ? Number(data.amount) : undefined,
+        firstPaymentDate: data.firstPaymentDate || undefined,
+        paymentFrequency: data.paymentFrequency ? Number(data.paymentFrequency) : undefined,
+        paymentNotes: data.paymentNotes || undefined,
       });
       setShowForm(false); load();
     } catch (err: any) {
@@ -118,6 +128,40 @@ export default function AdminTenantContracts() {
       await api.delete(`/admin-tenant/contracts/${deleteTarget.id}`);
       setDeleteTarget(null); load();
     } catch { setError(t('error.delete')); setDeleteTarget(null); }
+  };
+
+  const openCreateTemplate = () => {
+    setEditingTemplate(null);
+    setTemplateForm({ name: '', content: '' });
+    setShowTemplateForm(true);
+  };
+
+  const openEditTemplate = (template: Template) => {
+    setEditingTemplate(template);
+    setTemplateForm({ name: template.name, content: template.content });
+    setShowTemplateForm(true);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!templateForm.name || !templateForm.content) return;
+    try {
+      if (editingTemplate) {
+        await api.put(`/admin-tenant/templates/${editingTemplate.id}`, templateForm);
+      } else {
+        await api.post('/admin-tenant/templates', templateForm);
+      }
+      setShowTemplateForm(false);
+      load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || t('error.save'));
+    }
+  };
+
+  const handleDeleteTemplate = async (templateId: number) => {
+    try {
+      await api.delete(`/admin-tenant/templates/${templateId}`);
+      load();
+    } catch { setError(t('error.delete')); }
   };
 
   const handleStatusChange = async (id: number, status: string) => {
@@ -172,87 +216,134 @@ export default function AdminTenantContracts() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">{t('contracts.title')}</h1>
-          <p className="text-sm text-gray-500">{total} {t('dashboard.contracts')}</p>
+          <p className="text-sm text-gray-500">{activeTab === 'contracts' ? `${total} ${t('dashboard.contracts')}` : `${templates.length} plantillas`}</p>
         </div>
-        <button onClick={openCreate} className="bg-primary-500 text-white px-4 py-2.5 rounded-xl hover:bg-primary-600 transition text-sm font-medium shadow-md shadow-primary-200">
-          + {t('contracts.newContract')}
-        </button>
+        {activeTab === 'contracts' && (
+          <button onClick={openCreate} className="bg-primary-500 text-white px-4 py-2.5 rounded-xl hover:bg-primary-600 transition text-sm font-medium shadow-md shadow-primary-200">
+            + {t('contracts.newContract')}
+          </button>
+        )}
+        {activeTab === 'templates' && (
+          <button onClick={openCreateTemplate} className="bg-primary-500 text-white px-4 py-2.5 rounded-xl hover:bg-primary-600 transition text-sm font-medium shadow-md shadow-primary-200">
+            + Nueva plantilla
+          </button>
+        )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <div className="relative flex-1 min-w-[180px] max-w-sm">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-          </svg>
-          <input type="text" placeholder={t('contracts.searchPlaceholder')}
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-white"
-            value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <button onClick={handleExportCsv}
-          className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition text-sm font-medium shrink-0 flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-          </svg>
-          CSV
+      <div className="flex items-center gap-3 mb-5">
+        <button onClick={() => setActiveTab('contracts')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition ${activeTab === 'contracts' ? 'bg-primary-500 text-white shadow-md shadow-primary-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          Contratos
         </button>
-        {[
-          { value: '', label: t('actions.all') },
-          { value: 'draft', label: t('status.draft') },
-          { value: 'sent', label: t('status.sent') },
-          { value: 'signed', label: t('status.signed') },
-          { value: 'cancelled', label: t('status.cancelled') },
-        ].map((opt) => (
-          <button key={opt.value} onClick={() => setFilterStatus(opt.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${filterStatus === opt.value ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-            {opt.label}
-          </button>
-        ))}
+        <button onClick={() => setActiveTab('templates')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition ${activeTab === 'templates' ? 'bg-primary-500 text-white shadow-md shadow-primary-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          Plantillas
+        </button>
       </div>
 
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm border border-red-100">{error}</div>
       )}
 
-      <div className="grid gap-3">
-        {contracts.map((c) => (
-          <div key={c.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition cursor-pointer" onClick={() => setSelected(c)}>
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-1">
-                  <h3 className="font-semibold text-gray-800 truncate">{c.title}</h3>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${statusBadge(c.status)}`}>{t(`status.${c.status}`)}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-                  <span>{c.freelancerName || `Freelancer #${c.freelancerUserId}`}</span>
-                  {c.amount && <span>${Number(c.amount).toFixed(2)}</span>}
-                  <span>{new Date(c.createdAt).toLocaleDateString(i18n.language)}</span>
+      {activeTab === 'contracts' && (
+        <>
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            <div className="relative flex-1 min-w-[180px] max-w-sm">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input type="text" placeholder={t('contracts.searchPlaceholder')}
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-white"
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <button onClick={handleExportCsv}
+              className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition text-sm font-medium shrink-0 flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              CSV
+            </button>
+            {[
+              { value: '', label: t('actions.all') },
+              { value: 'draft', label: t('status.draft') },
+              { value: 'sent', label: t('status.sent') },
+              { value: 'signed', label: t('status.signed') },
+              { value: 'cancelled', label: t('status.cancelled') },
+            ].map((opt) => (
+              <button key={opt.value} onClick={() => setFilterStatus(opt.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${filterStatus === opt.value ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-3">
+            {contracts.map((c) => (
+              <div key={c.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition cursor-pointer" onClick={() => setSelected(c)}>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="font-semibold text-gray-800 truncate">{c.title}</h3>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${statusBadge(c.status)}`}>{t(`status.${c.status}`)}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                      <span>{c.freelancerName || `Freelancer #${c.freelancerUserId}`}</span>
+                      {c.amount && <span>${Number(c.amount).toFixed(2)}</span>}
+                      <span>{new Date(c.createdAt).toLocaleDateString(i18n.language)}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 ml-4 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => setSelected(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title={t('actions.view')}><HiOutlineEye className="w-4 h-4" /></button>
+                    {c.status === 'draft' && <button onClick={() => openEdit(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title={t('actions.edit')}><HiOutlinePencilSquare className="w-4 h-4" /></button>}
+                    <button onClick={() => downloadPdf(`/contracts/${c.id}/pdf`, `contract-${c.id}.pdf`)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="PDF">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                    </button>
+                    <button onClick={() => setDeleteTarget(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title={t('actions.delete')}><HiOutlineTrash className="w-4 h-4" /></button>
+                  </div>
                 </div>
               </div>
-              <div className="flex gap-1 ml-4 shrink-0" onClick={(e) => e.stopPropagation()}>
-                <button onClick={() => setSelected(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title={t('actions.view')}><HiOutlineEye className="w-4 h-4" /></button>
-                {c.status === 'draft' && <button onClick={() => openEdit(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title={t('actions.edit')}><HiOutlinePencilSquare className="w-4 h-4" /></button>}
-                <button onClick={() => downloadPdf(`/contracts/${c.id}/pdf`, `contract-${c.id}.pdf`)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title="PDF">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                </button>
-                <button onClick={() => setDeleteTarget(c)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title={t('actions.delete')}><HiOutlineTrash className="w-4 h-4" /></button>
+            ))}
+            {contracts.length === 0 && <div className="text-center py-12 text-gray-400">{t('contracts.noContracts')}</div>}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button disabled={page <= 1} onClick={() => setPage(page - 1)}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-60">
+                <HiOutlineChevronLeft className="w-4 h-4" /> {t('pagination.previous')}
+              </button>
+              <span className="text-sm text-gray-500 font-medium">{t('pagination.pageOf', { page, total: totalPages })}</span>
+              <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-60">
+                {t('pagination.next')} <HiOutlineChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'templates' && (
+        <div className="grid gap-3">
+          {templates.map((template) => (
+            <div key={template.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-1">
+                    <h3 className="font-semibold text-gray-800">{template.name}</h3>
+                    {!template.tenantId && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Global</span>}
+                  </div>
+                  <p className="text-xs text-gray-500 truncate">{template.content}</p>
+                </div>
+                {template.tenantId && (
+                  <div className="flex gap-1 ml-4 shrink-0">
+                    <button onClick={() => openEditTemplate(template)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title={t('actions.edit')}><HiOutlinePencilSquare className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteTemplate(template.id)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title={t('actions.delete')}><HiOutlineTrash className="w-4 h-4" /></button>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        ))}
-        {contracts.length === 0 && <div className="text-center py-12 text-gray-400">{t('contracts.noContracts')}</div>}
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 mt-6">
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)}
-            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-40">
-            <HiOutlineChevronLeft className="w-4 h-4" /> {t('pagination.previous')}
-          </button>
-          <span className="text-sm text-gray-500 font-medium">{t('pagination.pageOf', { page, total: totalPages })}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}
-            className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition disabled:opacity-40">
-            {t('pagination.next')} <HiOutlineChevronRight className="w-4 h-4" />
-          </button>
+          ))}
+          {templates.length === 0 && <div className="text-center py-12 text-gray-400">No hay plantillas</div>}
         </div>
       )}
 
@@ -285,11 +376,56 @@ export default function AdminTenantContracts() {
                 <input type="date" {...register('endDate')} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
               </div>
               <input type="number" {...register('amount')} placeholder={t('contracts.amountPlaceholder')} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Fecha de primer pago</label>
+                  <input type="date" {...register('firstPaymentDate')} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Frecuencia de pago</label>
+                  <select {...register('paymentFrequency', { valueAsNumber: true })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white">
+                    <option value={0}>Seleccionar</option>
+                    <option value={1}>Mensual</option>
+                    <option value={2}>Quincenal</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Notas de pago</label>
+                <textarea {...register('paymentNotes')} rows={2} placeholder="Detalles adicionales sobre el pago" className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+              </div>
+              
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition">{t('actions.cancel')}</button>
                 <button type="submit" className="flex-1 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition shadow-md">{t('contracts.createContract')}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showTemplateForm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowTemplateForm(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">{editingTemplate ? 'Editar plantilla' : 'Nueva plantilla'}</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <input value={templateForm.name} onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contenido (usa {'{{tenant_name}}'}, {'{{freelancer_name}}'}, {'{{date}}'}, {'{{start_date}}'}, {'{{end_date}}'}, {'{{amount}}'}, {'{{first_payment_date}}'}, {'{{payment_frequency}}'}, {'{{payment_notes}}'} como placeholders)</label>
+                <textarea rows={10} value={templateForm.content} onChange={(e) => setTemplateForm({ ...templateForm, content: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition bg-gray-50 focus:bg-white font-mono" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowTemplateForm(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition">{t('actions.cancel')}</button>
+                <button type="button" onClick={handleSaveTemplate} className="flex-1 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition shadow-md">{t('actions.save')}</button>
+              </div>
+            </div>
           </div>
         </div>
       )}

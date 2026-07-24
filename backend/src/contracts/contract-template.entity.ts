@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 
 @Entity('contract_templates')
 @Index(['createdByUserId'])
+@Index(['tenantId'])
 export class ContractTemplate {
   @PrimaryGeneratedColumn()
   id: number;
@@ -17,6 +18,9 @@ export class ContractTemplate {
 
   @Column({ nullable: true })
   createdByUserId: number;
+
+  @Column({ nullable: true })
+  tenantId: number;
 
   @CreateDateColumn()
   createdAt: Date;

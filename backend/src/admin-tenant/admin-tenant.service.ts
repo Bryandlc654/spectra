@@ -8,9 +8,12 @@ import { Contract, ContractStatus } from '../contracts/contract.entity';
 import { ContractTemplate } from '../contracts/contract-template.entity';
 import { KycRequest, KycStatus } from '../kyc/kyc-request.entity';
 import { KycDocument } from '../kyc/kyc-document.entity';
+import { KybRequest } from '../kyb/kyb-request.entity';
+import { KybDocument } from '../kyb/kyb-document.entity';
 import { Area } from '../areas/area.entity';
 import { Tenant } from '../tenants/tenant.entity';
 import { EmailService } from '../email/email.service';
+import { KybService } from '../kyb/kyb.service';
 
 @Injectable()
 export class AdminTenantService {
@@ -24,6 +27,7 @@ export class AdminTenantService {
     @InjectRepository(Tenant) private tenantsRepo: Repository<Tenant>,
     private emailService: EmailService,
     private jwtService: JwtService,
+    private kybService: KybService,
   ) {}
 
   private async getTenantIdForUser(userId: number): Promise<number> {
@@ -126,7 +130,8 @@ export class AdminTenantService {
 
     const appUrl = process.env.APP_URL || 'http://localhost:5173';
     const inviteUrl = `${appUrl}/accept-invitation/${invitationToken}`;
-    await this.emailService.sendInvitation(data.email, data.name, inviteUrl).catch((err) => {
+    // Fire and forget email - don't block user creation
+    this.emailService.sendInvitation(data.email, data.name, inviteUrl).catch((err) => {
       console.error('Failed to send invitation email:', err.message);
     });
 
@@ -194,7 +199,7 @@ export class AdminTenantService {
   async createContract(adminId: number, data: {
     templateId: number; freelancerUserId: number; freelancerName?: string;
     title: string; startDate?: string; endDate?: string; amount?: number;
-    customData?: Record<string, string>;
+    customData?: Record<string, string>; firstPaymentDate?: string; paymentFrequency?: number; paymentNotes?: string;
   }) {
     const tenantId = await this.getTenantIdForUser(adminId);
     const admin = await this.usersRepo.findOne({ where: { id: adminId } });
@@ -214,6 +219,9 @@ export class AdminTenantService {
       start_date: data.startDate || '',
       end_date: data.endDate || '',
       amount: data.amount ? `$${data.amount.toFixed(2)}` : '',
+      first_payment_date: data.firstPaymentDate || '',
+      payment_frequency: data.paymentFrequency ? (data.paymentFrequency === 1 ? 'Mensual' : 'Quincenal') : '',
+      payment_notes: data.paymentNotes || '',
       ...(data.customData || {}),
     };
 
@@ -234,6 +242,9 @@ export class AdminTenantService {
       startDate: data.startDate,
       endDate: data.endDate,
       amount: data.amount,
+      firstPaymentDate: data.firstPaymentDate,
+      paymentFrequency: data.paymentFrequency,
+      paymentNotes: data.paymentNotes,
       status: ContractStatus.DRAFT,
     });
 
@@ -249,7 +260,10 @@ export class AdminTenantService {
     return saved;
   }
 
-  async updateContract(adminId: number, id: number, data: { title?: string; startDate?: string; endDate?: string; amount?: number }) {
+  async updateContract(adminId: number, id: number, data: { 
+    title?: string; startDate?: string; endDate?: string; amount?: number; 
+    firstPaymentDate?: string; paymentFrequency?: number; paymentNotes?: string 
+  }) {
     const contract = await this.getContractById(adminId, id);
     if (contract.status !== ContractStatus.DRAFT) {
       throw new BadRequestException('Only draft contracts can be edited');
@@ -258,6 +272,9 @@ export class AdminTenantService {
     if (data.startDate !== undefined) contract.startDate = data.startDate;
     if (data.endDate !== undefined) contract.endDate = data.endDate;
     if (data.amount !== undefined) contract.amount = data.amount;
+    if (data.firstPaymentDate !== undefined) contract.firstPaymentDate = data.firstPaymentDate;
+    if (data.paymentFrequency !== undefined) contract.paymentFrequency = data.paymentFrequency;
+    if (data.paymentNotes !== undefined) contract.paymentNotes = data.paymentNotes;
     return this.contractsRepo.save(contract);
   }
 
@@ -368,8 +385,38 @@ export class AdminTenantService {
     return this.areasRepo.find({ order: { name: 'ASC' } });
   }
 
-  async getTemplates() {
-    return this.templatesRepo.find({ where: { isActive: true }, order: { name: 'ASC' } });
+  async getTemplates(adminId: number) {
+    const tenantId = await this.getTenantIdForUser(adminId);
+    const qb = this.templatesRepo.createQueryBuilder('template');
+    const [data] = await qb
+      .where('template.tenantId = :tenantId OR template.tenantId IS NULL', { tenantId })
+      .andWhere('template.isActive = true')
+      .orderBy('template.name', 'ASC')
+      .getManyAndCount();
+    return data;
+  }
+
+  async createTemplate(adminId: number, data: { name: string; content: string }) {
+    const tenantId = await this.getTenantIdForUser(adminId);
+    const template = this.templatesRepo.create({ ...data, createdByUserId: adminId, tenantId });
+    return this.templatesRepo.save(template);
+  }
+
+  async updateTemplate(adminId: number, templateId: number, data: { name?: string; content?: string; isActive?: boolean }) {
+    const tenantId = await this.getTenantIdForUser(adminId);
+    const template = await this.templatesRepo.findOne({ where: { id: templateId } });
+    if (!template) throw new NotFoundException('Template not found');
+    if (template.tenantId !== tenantId) throw new ForbiddenException('You do not own this template');
+    Object.assign(template, data);
+    return this.templatesRepo.save(template);
+  }
+
+  async deleteTemplate(adminId: number, templateId: number) {
+    const tenantId = await this.getTenantIdForUser(adminId);
+    const template = await this.templatesRepo.findOne({ where: { id: templateId } });
+    if (!template) throw new NotFoundException('Template not found');
+    if (template.tenantId !== tenantId) throw new ForbiddenException('You do not own this template');
+    return this.templatesRepo.remove(template);
   }
 
   // ─── PROFILE / SETTINGS ──────────────────────────────────
@@ -404,5 +451,19 @@ export class AdminTenantService {
     if (!valid) throw new BadRequestException('Current password is incorrect');
     user.password = await bcrypt.hash(newPassword, 10);
     return this.usersRepo.save(user);
+  }
+
+  // ─── KYB (Know Your Business) ──────────────────────────────────
+
+  async getKyb(adminId: number) {
+    return this.kybService.getKybRequest(adminId, this.usersRepo);
+  }
+
+  async uploadKybDocument(adminId: number, type: string, file: Express.Multer.File) {
+    return this.kybService.uploadDocument(adminId, this.usersRepo, type, file);
+  }
+
+  async deleteKybDocument(adminId: number, docId: number) {
+    return this.kybService.deleteDocument(adminId, this.usersRepo, docId);
   }
 }

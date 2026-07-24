@@ -33,6 +33,19 @@ export class CreateContractDto {
   amount?: number;
 
   @IsOptional()
+  @IsString()
+  firstPaymentDate?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  paymentFrequency?: number;
+
+  @IsOptional()
+  @IsString()
+  paymentNotes?: string;
+
+  @IsOptional()
   @IsObject()
   customData?: Record<string, string>;
 }

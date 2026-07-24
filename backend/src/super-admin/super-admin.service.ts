@@ -7,6 +7,8 @@ import { User, UserRole } from '../users/user.entity';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { KycService } from '../kyc/kyc.service';
+import { KybService } from '../kyb/kyb.service';
+import { KybStatus } from '../kyb/kyb-request.entity';
 
 @Injectable()
 export class SuperAdminService {
@@ -16,6 +18,7 @@ export class SuperAdminService {
     private emailService: EmailService,
     private tenantsService: TenantsService,
     private kycService: KycService,
+    private kybService: KybService,
     private jwtService: JwtService,
   ) {}
 
@@ -176,5 +179,19 @@ export class SuperAdminService {
     const user = await this.usersRepository.findOne({ where: { id, role: UserRole.FREELANCE } });
     if (!user) throw new NotFoundException('Freelancer not found');
     return this.usersRepository.remove(user);
+  }
+
+  // ─── KYB (Know Your Business) ──────────────────────────────────
+
+  async getKybRequests(page?: number, limit?: number, status?: string, search?: string) {
+    return this.kybService.getAllKybRequests(page || 1, limit || 50, status, search);
+  }
+
+  async getKybRequestById(id: number) {
+    return this.kybService.getKybRequestById(id);
+  }
+
+  async updateKybStatus(id: number, status: KybStatus, adminNotes?: string) {
+    return this.kybService.updateKybStatus(id, status, adminNotes);
   }
 }

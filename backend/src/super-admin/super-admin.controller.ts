@@ -129,4 +129,32 @@ export class SuperAdminController {
     res.setHeader('Content-Disposition', 'attachment; filename="freelancers.csv"');
     res.send('\uFEFF' + csv);
   }
+
+  // ─── KYB (Know Your Business) ──────────────────────────────────
+
+  @Get('kyb')
+  getKybRequests(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.service.getKybRequests(page ? +page : 1, limit ? +limit : 50, status, search);
+  }
+
+  @Get('kyb/:id')
+  getKybRequestById(@Param('id', ParseIntPipe) id: number) {
+    return this.service.getKybRequestById(id);
+  }
+
+  @Put('kyb/:id/status')
+  async updateKybStatus(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { status: string; adminNotes?: string },
+  ) {
+    const result = await this.service.updateKybStatus(id, body.status as any, body.adminNotes);
+    logUserAction(this.activityLog, req, 'update', 'kyb', id, `Actualizó estado KYB a ${body.status}`);
+    return result;
+  }
 }

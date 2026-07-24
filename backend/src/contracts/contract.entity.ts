@@ -53,6 +53,15 @@ export class Contract {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   amount: number;
 
+  @Column({ type: 'date', nullable: true })
+  firstPaymentDate: string;
+
+  @Column({ type: 'int', nullable: true })
+  paymentFrequency: number; // 1=mensual, 2=quincenal, etc.
+
+  @Column({ type: 'text', nullable: true })
+  paymentNotes: string;
+
   @Column({ nullable: true })
   signedAt: Date;
 

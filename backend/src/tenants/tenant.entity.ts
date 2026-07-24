@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, Index, OneToOne, JoinColumn } from 'typeorm';
 import { User } from '../users/user.entity';
+import { KybRequest } from '../kyb/kyb-request.entity';
 
 @Entity('tenants')
 @Index(['createdAt'])
@@ -39,6 +40,13 @@ export class Tenant {
 
   @OneToMany(() => User, (user) => user.tenant)
   users: User[];
+
+  @OneToOne(() => KybRequest, { nullable: true, cascade: true })
+  @JoinColumn({ name: 'kybRequestId' })
+  kybRequest: KybRequest;
+
+  @Column({ nullable: true })
+  kybRequestId: number;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -16,8 +16,8 @@ export class EmailService {
 
   private async send(to: string, subject: string, html: string) {
     if (!this.apiKey) {
-      this.logger.error('Resend not configured - RESEND_API_KEY is missing');
-      throw new Error('Email service not configured');
+      this.logger.warn('Resend not configured - RESEND_API_KEY is missing, skipping email to ' + to);
+      return; // No lanzamos error, solo registramos un warning y salimos
     }
     this.logger.log(`Sending email to ${to} with subject "${subject}"`);
     const res = await fetch('https://api.resend.com/emails', {
@@ -31,9 +31,10 @@ export class EmailService {
     if (!res.ok) {
       const err = await res.text();
       this.logger.error(`Resend error (${res.status}): ${err}`);
-      throw new Error(`Email send failed: ${err}`);
+      // No lanzamos error para no bloquear la operación principal
+    } else {
+      this.logger.log(`Email sent successfully to ${to}`);
     }
-    this.logger.log(`Email sent successfully to ${to}`);
   }
 
   async sendCredentials(email: string, name: string, password: string, tenantName?: string) {

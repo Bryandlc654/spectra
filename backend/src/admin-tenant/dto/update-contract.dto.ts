@@ -18,4 +18,17 @@ export class UpdateContractDto {
   @IsNumber()
   @Min(0)
   amount?: number;
+
+  @IsOptional()
+  @IsString()
+  firstPaymentDate?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  paymentFrequency?: number;
+
+  @IsOptional()
+  @IsString()
+  paymentNotes?: string;
 }

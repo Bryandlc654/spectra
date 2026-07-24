@@ -19,7 +19,7 @@ export default function AdminTenantPanel() {
     { key: 'dashboard', label: t('modules.dashboard'), icon: HiOutlineHome },
     { key: 'freelancers', label: t('modules.freelancers'), icon: HiOutlineUserGroup },
     { key: 'contracts', label: t('modules.contracts'), icon: HiOutlineDocumentText },
-    { key: 'kyc', label: t('modules.kyc'), icon: HiOutlineShieldCheck },
+    { key: 'kyb', label: 'KYB', icon: HiOutlineShieldCheck },
     { key: 'profile', label: t('modules.profile') || 'Mi Perfil', icon: HiOutlineUser },
   ];
 
@@ -30,7 +30,7 @@ export default function AdminTenantPanel() {
       case 'dashboard': return <AdminTenantDashboard onNavigate={setActive} />;
       case 'freelancers': return <AdminTenantFreelancers />;
       case 'contracts': return <AdminTenantContracts />;
-      case 'kyc': return <KycUpload />;
+      case 'kyb': return <KycUpload />;
       case 'profile': return <ProfilePage />;
       default: return <AdminTenantDashboard onNavigate={setActive} />;
     }

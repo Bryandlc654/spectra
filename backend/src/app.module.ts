@@ -13,6 +13,7 @@ import { ModulesModule } from './modules/modules.module';
 import { AreasModule } from './areas/areas.module';
 import { ActivityLogsModule } from './activity-logs/activity-logs.module';
 import { KycModule } from './kyc/kyc.module';
+import { KybModule } from './kyb/kyb.module';
 import { SettingsModule } from './settings/settings.module';
 import { SessionLogsModule } from './session-logs/session-logs.module';
 import { ContractsModule } from './contracts/contracts.module';
@@ -44,6 +45,7 @@ import { EmailModule } from './email/email.module';
     AreasModule,
     ActivityLogsModule,
     KycModule,
+    KybModule,
     SettingsModule,
     SessionLogsModule,
     ContractsModule,

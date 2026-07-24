@@ -35,7 +35,22 @@ export class AdminTenantController {
   getAreas() { return this.service.getAreas(); }
 
   @Get('templates')
-  getTemplates() { return this.service.getTemplates(); }
+  getTemplates(@Req() req: any) { return this.service.getTemplates(req.user.id); }
+
+  @Post('templates')
+  createTemplate(@Req() req: any, @Body() body: { name: string; content: string }) {
+    return this.service.createTemplate(req.user.id, body);
+  }
+
+  @Put('templates/:id')
+  updateTemplate(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() body: { name?: string; content?: string; isActive?: boolean }) {
+    return this.service.updateTemplate(req.user.id, id, body);
+  }
+
+  @Delete('templates/:id')
+  deleteTemplate(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.service.deleteTemplate(req.user.id, id);
+  }
 
   // ─── FREELANCERS ─────────────────────────────────────────
 
@@ -52,26 +67,6 @@ export class AdminTenantController {
   @Get('freelancers/:id')
   getFreelancerById(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
     return this.service.getFreelancerById(req.user.id, id);
-  }
-
-  @Post('freelancers')
-  createFreelancer(@Req() req: any, @Body() body: CreateFreelancerDto) {
-    return this.service.createFreelancer(req.user.id, body);
-  }
-
-  @Put('freelancers/:id')
-  updateFreelancer(@Req() req: any, @Param('id', ParseIntPipe) id: number, @Body() body: UpdateFreelancerDto) {
-    return this.service.updateFreelancer(req.user.id, id, body);
-  }
-
-  @Delete('freelancers/:id')
-  deleteFreelancer(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
-    return this.service.deleteFreelancer(req.user.id, id);
-  }
-
-  @Put('freelancers/:id/toggle-status')
-  toggleFreelancerStatus(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
-    return this.service.toggleFreelancerStatus(req.user.id, id);
   }
 
   // ─── CONTRACTS ───────────────────────────────────────────
@@ -149,7 +144,7 @@ export class AdminTenantController {
   async exportContractsCsv(@Req() req: any, @Res() res: Response, @Query('status') status?: string, @Query('search') search?: string) {
     const result = await this.service.getContracts(req.user.id, 1, 10000, status, search);
     const rows = [
-      ['ID', 'Título', 'Freelancer', 'Estado', 'Monto', 'Fecha inicio', 'Fecha fin', 'Fecha creación'],
+      ['ID', 'Título', 'Freelancer', 'Estado', 'Monto', 'Fecha inicio', 'Fecha fin', 'Primer pago', 'Frecuencia pago', 'Notas pago', 'Fecha creación'],
       ...result.data.map((c: any) => [
         c.id,
         c.title,
@@ -158,6 +153,9 @@ export class AdminTenantController {
         c.amount ? `$${Number(c.amount).toFixed(2)}` : '',
         c.startDate || '',
         c.endDate || '',
+        c.firstPaymentDate || '',
+        c.paymentFrequency ? (c.paymentFrequency === 1 ? 'Mensual' : 'Quincenal') : '',
+        c.paymentNotes || '',
         new Date(c.createdAt).toLocaleDateString('es-ES'),
       ]),
     ];
@@ -167,20 +165,14 @@ export class AdminTenantController {
     res.send('\uFEFF' + csv);
   }
 
-  // ─── KYC ────────────────────────────────────────────────
+  // ─── KYB (Know Your Business) ──────────────────────────────────
 
-  @Get('kyc')
-  getKycRequests(
-    @Req() req: any,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('status') status?: string,
-    @Query('search') search?: string,
-  ) {
-    return this.service.getKycRequests(req.user.id, Number(page) || 1, Math.min(Number(limit) || 50, 100), status, search);
+  @Get('kyb')
+  getKyb(@Req() req: any) {
+    return this.service.getKyb(req.user.id);
   }
 
-  @Post('kyc/upload/:userId')
+  @Post('kyb/upload')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -197,29 +189,19 @@ export class AdminTenantController {
       },
     }),
   )
-  async uploadKycDocument(
+  async uploadKybDocument(
     @Req() req: any,
-    @Param('userId', ParseIntPipe) userId: number,
-    @Body() body: UploadKycDocumentDto,
+    @Body() body: { type: string },
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const docType = body.type || 'identity';
-    return this.service.uploadKycDocument(req.user.id, userId, docType, file);
+    const docType = body.type || 'business_registration';
+    return this.service.uploadKybDocument(req.user.id, docType, file);
   }
 
-  @Put('kyc/:id/status')
-  updateKycStatus(
-    @Req() req: any,
-    @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateKycStatusDto,
-  ) {
-    return this.service.updateKycStatus(req.user.id, id, body.status, body.adminNotes);
-  }
-
-  @Delete('kyc/documents/:id')
-  deleteKycDocument(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
-    return this.service.deleteKycDocument(req.user.id, id);
+  @Delete('kyb/documents/:id')
+  deleteKybDocument(@Req() req: any, @Param('id', ParseIntPipe) id: number) {
+    return this.service.deleteKybDocument(req.user.id, id);
   }
 
   // ─── PROFILE / SETTINGS ──────────────────────────────────

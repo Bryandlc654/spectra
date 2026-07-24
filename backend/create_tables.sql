@@ -68,3 +68,45 @@ CREATE TABLE IF NOT EXISTS settings (
   createdAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   updatedAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
 );
+
+CREATE TABLE IF NOT EXISTS kyb_requests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  tenantId INT NOT NULL,
+  status ENUM('pending','approved','rejected') DEFAULT 'pending',
+  adminNotes TEXT NULL,
+  createdAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updatedAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  INDEX idx_tenant (tenantId),
+  INDEX idx_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS kyb_documents (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  kybRequestId INT NOT NULL,
+  type VARCHAR(100) NOT NULL,
+  originalName VARCHAR(255) NOT NULL,
+  filePath VARCHAR(500) NOT NULL,
+  mimeType VARCHAR(100) NOT NULL,
+  createdAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  INDEX idx_kyb (kybRequestId),
+  FOREIGN KEY (kybRequestId) REFERENCES kyb_requests(id) ON DELETE CASCADE
+);
+
+-- Add kybRequestId to tenants if not exists
+SET @dbname = DATABASE();
+SET @tablename = 'tenants';
+SET @columnname = 'kybRequestId';
+SET @preparedStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE
+      (table_schema = @dbname)
+      AND (table_name = @tablename)
+      AND (column_name = @columnname)
+  ) > 0,
+  'SELECT 1',
+  CONCAT('ALTER TABLE ', @tablename, ' ADD COLUMN ', @columnname, ' INT NULL')
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;

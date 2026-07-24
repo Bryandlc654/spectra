@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { HiOutlineHome, HiOutlineBuildingOffice2, HiOutlineShieldCheck, HiOutlineUsers, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineChartBarSquare, HiOutlineClipboardDocumentCheck, HiOutlineComputerDesktop, HiOutlineDocumentText, HiOutlineCog6Tooth } from 'react-icons/hi2';
+import { HiOutlineHome, HiOutlineBuildingOffice2, HiOutlineShieldCheck, HiOutlineUsers, HiOutlineBriefcase, HiOutlineUserGroup, HiOutlineChartBarSquare, HiOutlineClipboardDocumentCheck, HiOutlineComputerDesktop, HiOutlineDocumentText, HiOutlineCog6Tooth, HiOutlineBuildingOffice } from 'react-icons/hi2';
 import { useTranslation } from 'react-i18next';
 import api from '../../api/axios';
 import AdminSidebar from '../../components/AdminSidebar';
@@ -12,6 +12,7 @@ import AdminTenantsList from './AdminTenantsList';
 import FreelancersList from './FreelancersList';
 import Reports from './Reports';
 import KycReview from './KycReview';
+import KybReview from './KybReview';
 import Settings from './Settings';
 import SessionLogs from './SessionLogs';
 import ContractsPanel from './ContractsPanel';
@@ -25,6 +26,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   freelancers: HiOutlineUserGroup,
   reports: HiOutlineChartBarSquare,
   kyc: HiOutlineClipboardDocumentCheck,
+  kyb: HiOutlineBuildingOffice,
   'session-logs': HiOutlineComputerDesktop,
   'contracts': HiOutlineDocumentText,
   settings: HiOutlineCog6Tooth,
@@ -59,6 +61,7 @@ export default function SuperAdminPanel() {
       case 'freelancers': return <FreelancersList />;
       case 'reports': return <Reports />;
       case 'kyc': return <KycReview />;
+      case 'kyb': return <KybReview />;
       case 'session-logs': return <SessionLogs />;
       case 'contracts': return <ContractsPanel />;
       case 'settings': return <Settings />;

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { HiOutlinePencilSquare, HiOutlineTrash, HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineEye } from 'react-icons/hi2';
 import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 import ConfirmModal from '../../components/ConfirmModal';
 import api from '../../api/axios';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -33,7 +34,6 @@ export default function AdminTenantFreelancers() {
   const [editing, setEditing] = useState<Freelancer | null>(null);
   const [form, setForm] = useState({ name: '', email: '', phone: '', country: '', documentId: '', areaId: 0, yearsOfExperience: 0, skills: '', bio: '' });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Freelancer | null>(null);
   const [viewing, setViewing] = useState<Freelancer | null>(null);
   const [search, setSearch] = useState('');
@@ -72,7 +72,7 @@ export default function AdminTenantFreelancers() {
   const openCreate = () => {
     setEditing(null);
     setForm({ name: '', email: '', phone: '', country: '', documentId: '', areaId: 0, yearsOfExperience: 0, skills: '', bio: '' });
-    setError(''); setShowForm(true);
+    setShowForm(true);
   };
 
   const openEdit = (f: Freelancer) => {
@@ -82,11 +82,11 @@ export default function AdminTenantFreelancers() {
       documentId: f.documentId || '', areaId: f.area?.id || 0,
       yearsOfExperience: f.yearsOfExperience || 0, skills: f.skills || '', bio: f.bio || '',
     });
-    setError(''); setShowForm(true);
+    setShowForm(true);
   };
 
   const handleSave = async () => {
-    setSaving(true); setError('');
+    setSaving(true);
     try {
       const payload = {
         name: form.name, email: form.email, phone: form.phone || undefined,
@@ -94,11 +94,17 @@ export default function AdminTenantFreelancers() {
         areaId: form.areaId || undefined, yearsOfExperience: form.yearsOfExperience || undefined,
         skills: form.skills || undefined, bio: form.bio || undefined,
       };
-      if (editing) await api.put(`/admin-tenant/freelancers/${editing.id}`, payload);
-      else await api.post('/admin-tenant/freelancers', payload);
+      if (editing) {
+        await api.put(`/admin-tenant/freelancers/${editing.id}`, payload);
+        toast.success(t('freelancers.updated') || 'Freelancer actualizado');
+      } else {
+        await api.post('/admin-tenant/freelancers', payload);
+        toast.success(t('freelancers.created') || 'Freelancer creado');
+      }
       setShowForm(false); setEditing(null); load();
     } catch (err: any) {
-      setError(err.response?.data?.message || t('error.save'));
+      const msg = err.response?.data?.message || t('error.save');
+      toast.error(msg);
     } finally { setSaving(false); }
   };
 
@@ -106,15 +112,23 @@ export default function AdminTenantFreelancers() {
     if (!deleteTarget) return;
     try {
       await api.delete(`/admin-tenant/freelancers/${deleteTarget.id}`);
+      toast.success(t('freelancers.deleted') || 'Freelancer eliminado');
       setDeleteTarget(null); load();
-    } catch { setError(t('error.delete')); setDeleteTarget(null); }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || t('error.delete');
+      toast.error(msg);
+      setDeleteTarget(null);
+    }
   };
 
   const handleToggleStatus = async (f: Freelancer) => {
     try {
       await api.put(`/admin-tenant/freelancers/${f.id}/toggle-status`);
       load();
-    } catch { setError(t('error.toggleStatus')); }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || t('error.toggleStatus');
+      toast.error(msg);
+    }
   };
 
   const handleExportCsv = async () => {
@@ -144,9 +158,6 @@ export default function AdminTenantFreelancers() {
           </svg>
           {t('actions.exportCsv')}
         </button>
-        <button onClick={openCreate} className="bg-primary-500 text-white px-4 py-2.5 rounded-xl hover:bg-primary-600 transition text-sm font-medium shadow-md shadow-primary-200">
-          + {t('freelancers.newFreelancer')}
-        </button>
       </div>
 
       <div className="mb-5">
@@ -169,14 +180,6 @@ export default function AdminTenantFreelancers() {
             </div>
 
             <div className="p-4 sm:p-6 overflow-y-auto flex-1">
-              {error && (
-                <div className="flex items-center gap-2 bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm border border-red-100">
-                  <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {error}
-                </div>
-              )}
 
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -296,24 +299,17 @@ export default function AdminTenantFreelancers() {
                 </td>
                 <td className="px-4 py-3 text-gray-600 text-xs">{f.country || '—'}</td>
                 <td className="px-4 py-3">
-                  <button onClick={() => handleToggleStatus(f)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition ${f.isActive ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${f.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                     {f.isActive ? t('status.active') : t('status.inactive')}
-                  </button>
+                  </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => setViewing(f)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition" title={t('actions.view')}>
-                      <HiOutlineEye className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => openEdit(f)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition" title={t('actions.edit')}>
-                      <HiOutlinePencilSquare className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setDeleteTarget(f)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition" title={t('actions.delete')}>
-                      <HiOutlineTrash className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setViewing(f)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition" title={t('actions.view')}>
+                  <HiOutlineEye className="w-4 h-4" />
+                </button>
+              </div>
+            </td>
               </tr>
             ))}
             {freelancers.length === 0 && (
@@ -410,11 +406,6 @@ export default function AdminTenantFreelancers() {
                   <p className="text-gray-800 text-sm whitespace-pre-wrap">{viewing.bio}</p>
                 </div>
               )}
-            </div>
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl shrink-0">
-              <button onClick={() => { setViewing(null); openEdit(viewing); }} className="px-4 py-2.5 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition shadow-md">
-                {t('actions.edit')}
-              </button>
             </div>
           </div>
         </div>
