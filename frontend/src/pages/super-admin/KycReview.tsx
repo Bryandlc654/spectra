@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { fileUrl } from '../../utils/fileUrl';
-import { HiOutlineCheckCircle, HiOutlineDocumentArrowDown, HiOutlineShieldCheck, HiOutlineUserGroup, HiOutlineClock, HiOutlineXCircle, HiOutlineEye, HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi2';
+import { HiOutlineCheckCircle, HiOutlineDocumentArrowDown, HiOutlineShieldCheck, HiOutlineUserGroup, HiOutlineClock, HiOutlineXCircle, HiOutlineEye, HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineTrash } from 'react-icons/hi2';
 
 interface KycDocument {
   id: number; type: string; originalName: string; filePath: string; mimeType: string; createdAt: string;
@@ -10,6 +10,7 @@ interface KycDocument {
 interface KycRequest {
   id: number; userId: number; userType: string; status: string; adminNotes?: string;
   documents: KycDocument[]; createdAt: string;
+  user?: { id: number; name: string; email: string };
 }
 
 export default function KycReview() {
@@ -61,6 +62,17 @@ export default function KycReview() {
       setReviewing(null); setRejectNote(''); await load();
     } catch {
       setError('Error al rechazar la solicitud');
+    } finally { setLoading(false); }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Eliminar esta solicitud KYC y todos sus documentos?')) return;
+    setLoading(true); setError(null);
+    try {
+      await api.delete(`/kyc/${id}`);
+      setReviewing(null); await load();
+    } catch {
+      setError('Error al eliminar la solicitud');
     } finally { setLoading(false); }
   };
 
@@ -152,8 +164,8 @@ export default function KycReview() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                        <span className="font-semibold text-gray-900 text-sm">{userTypeLabel(req.userType)}</span>
-                        <span className="text-xs text-gray-400">· ID {req.userId}</span>
+                        <span className="font-semibold text-gray-900 text-sm">{req.user?.name || 'Usuario'}</span>
+                        <span className="text-xs text-gray-400">· {req.user?.email || `ID ${req.userId}`}</span>
                         <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full border ${statusBadge(req.status)}`}>
                           <StatusIcon className="w-3 h-3" />
                           {statusLabel(req.status)}
@@ -190,6 +202,11 @@ export default function KycReview() {
                       Revisar
                     </button>
                   )}
+                  <button onClick={() => handleDelete(req.id)} disabled={loading}
+                    className="ml-2 shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 border border-gray-100 hover:border-red-200 transition disabled:opacity-40"
+                    title="Eliminar solicitud">
+                    <HiOutlineTrash className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -231,7 +248,7 @@ export default function KycReview() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Revisar solicitud</h2>
-                  <p className="text-sm text-gray-500">{userTypeLabel(reviewing.userType)} · ID {reviewing.userId}</p>
+                  <p className="text-sm text-gray-500">{reviewing.user?.name || 'Usuario'} · {reviewing.user?.email || `ID ${reviewing.userId}`}</p>
                 </div>
               </div>
               <button onClick={() => setReviewing(null)} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
@@ -274,6 +291,12 @@ export default function KycReview() {
             </div>
 
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+              <button onClick={() => { handleDelete(reviewing.id); }}
+                disabled={loading}
+                className="px-4 py-2.5 border border-gray-200 text-gray-500 rounded-xl text-sm font-medium hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition disabled:opacity-40 flex items-center gap-2">
+                <HiOutlineTrash className="w-4 h-4" />
+                Eliminar
+              </button>
               <button onClick={() => { handleReject(reviewing.id); }}
                 disabled={loading || !rejectNote.trim()}
                 className="px-6 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:bg-red-50 transition disabled:opacity-40 flex items-center gap-2">

@@ -56,6 +56,9 @@ let KycController = class KycController {
     reject(id, dto) {
         return this.service.reject(+id, dto.adminNotes);
     }
+    remove(id) {
+        return this.service.remove(+id);
+    }
 };
 exports.KycController = KycController;
 __decorate([
@@ -132,6 +135,15 @@ __decorate([
     __metadata("design:paramtypes", [String, reject_kyc_dto_1.RejectKycDto]),
     __metadata("design:returntype", void 0)
 ], KycController.prototype, "reject", null);
+__decorate([
+    (0, common_1.Delete)(':id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)('super_admin'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], KycController.prototype, "remove", null);
 exports.KycController = KycController = __decorate([
     (0, common_1.Controller)('kyc'),
     __metadata("design:paramtypes", [kyc_service_1.KycService])

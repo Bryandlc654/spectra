@@ -21,34 +21,50 @@ let TenantsService = class TenantsService {
     constructor(repo) {
         this.repo = repo;
     }
-    async findAll() {
-        const tenants = await this.repo.find({ order: { createdAt: 'DESC' }, take: 200 });
-        const ids = tenants.map((t) => t.id);
-        if (ids.length === 0)
-            return tenants;
-        const counts = await this.repo.manager
-            .createQueryBuilder()
-            .select('tenantId')
-            .addSelect('SUM(CASE WHEN role = :admin THEN 1 ELSE 0 END)', 'adminCount')
-            .addSelect('SUM(CASE WHEN role = :freelance THEN 1 ELSE 0 END)', 'freelanceCount')
-            .from('users', 'users')
-            .where('tenantId IN (:...ids)', { ids })
-            .setParameter('admin', 'admin_tenant')
-            .setParameter('freelance', 'freelance')
-            .groupBy('tenantId')
-            .getRawMany();
-        const countMap = new Map(counts.map((c) => [c.tenantId, { admins: Number(c.adminCount), freelancers: Number(c.freelanceCount) }]));
-        return tenants.map((t) => ({
-            ...t,
-            adminTenantsCount: countMap.get(t.id)?.admins ?? 0,
-            freelancersCount: countMap.get(t.id)?.freelancers ?? 0,
-        }));
+    async findAll(page = 1, limit = 50) {
+        const [data, total] = await this.repo.findAndCount({
+            order: { createdAt: 'DESC' },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+        const ids = data.map((t) => t.id);
+        let enriched = data;
+        if (ids.length > 0) {
+            const counts = await this.repo.manager
+                .createQueryBuilder()
+                .select('tenantId')
+                .addSelect('SUM(CASE WHEN role = :admin THEN 1 ELSE 0 END)', 'adminCount')
+                .addSelect('SUM(CASE WHEN role = :freelance THEN 1 ELSE 0 END)', 'freelanceCount')
+                .from('users', 'users')
+                .where('tenantId IN (:...ids)', { ids })
+                .setParameter('admin', 'admin_tenant')
+                .setParameter('freelance', 'freelance')
+                .groupBy('tenantId')
+                .getRawMany();
+            const countMap = new Map(counts.map((c) => [c.tenantId, { admins: Number(c.adminCount), freelancers: Number(c.freelanceCount) }]));
+            enriched = data.map((t) => ({
+                ...t,
+                adminTenantsCount: countMap.get(t.id)?.admins ?? 0,
+                freelancersCount: countMap.get(t.id)?.freelancers ?? 0,
+            }));
+        }
+        return { data: enriched, total, page, limit, totalPages: Math.ceil(total / limit) };
     }
     async findById(id) {
-        const tenant = await this.repo.findOne({ where: { id }, relations: ['users'] });
+        const tenant = await this.repo.findOne({ where: { id } });
         if (!tenant)
             throw new common_1.NotFoundException('Tenant not found');
         return tenant;
+    }
+    async findUsers(id, page = 1, limit = 50) {
+        await this.findById(id);
+        const [data, total] = await this.repo.manager.getRepository('User').findAndCount({
+            where: { tenantId: id },
+            order: { createdAt: 'DESC' },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+        return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
     }
     async create(dto) {
         const tenant = this.repo.create(dto);

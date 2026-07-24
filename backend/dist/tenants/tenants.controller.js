@@ -21,17 +21,24 @@ const update_tenant_dto_1 = require("./dto/update-tenant.dto");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/roles.guard");
 const roles_decorator_1 = require("../common/roles.decorator");
-function logUserAction(logger, req, action, entityType, entityId, description) {
+const logger = new common_1.Logger('Tenants');
+function logUserAction(activityLog, req, action, entityType, entityId, description) {
     const user = req.user;
-    logger.log({ userId: user.id, userName: user.email, action, entityType, entityId, description }).catch(() => { });
+    activityLog.log({ userId: user.id, userName: user.email, action, entityType, entityId, description })
+        .catch((err) => logger.error(`Failed to log activity: ${action} ${entityType}`, err));
 }
 let TenantsController = class TenantsController {
     constructor(service, activityLog) {
         this.service = service;
         this.activityLog = activityLog;
     }
-    findAll() { return this.service.findAll(); }
+    findAll(page, limit) {
+        return this.service.findAll(page ? +page : 1, limit ? +limit : 50);
+    }
     findOne(id) { return this.service.findById(+id); }
+    findUsers(id, page, limit) {
+        return this.service.findUsers(+id, page ? +page : 1, limit ? +limit : 50);
+    }
     async create(req, dto) {
         const result = await this.service.create(dto);
         logUserAction(this.activityLog, req, 'create', 'tenant', result.id, `Creó tenant: ${dto.businessName}`);
@@ -51,8 +58,10 @@ let TenantsController = class TenantsController {
 exports.TenantsController = TenantsController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], TenantsController.prototype, "findAll", null);
 __decorate([
@@ -62,6 +71,15 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", void 0)
 ], TenantsController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Get)(':id/users'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)('page')),
+    __param(2, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], TenantsController.prototype, "findUsers", null);
 __decorate([
     (0, common_1.Post)(),
     __param(0, (0, common_1.Req)()),

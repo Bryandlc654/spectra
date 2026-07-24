@@ -25,4 +25,5 @@ export declare class KycController {
     }>;
     approve(id: string): Promise<import("./kyc-request.entity").KycRequest>;
     reject(id: string, dto: RejectKycDto): Promise<import("./kyc-request.entity").KycRequest>;
+    remove(id: string): Promise<import("./kyc-request.entity").KycRequest>;
 }

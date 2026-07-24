@@ -19,9 +19,11 @@ const activity_logs_service_1 = require("../activity-logs/activity-logs.service"
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const roles_guard_1 = require("../common/roles.guard");
 const roles_decorator_1 = require("../common/roles.decorator");
-function logUserAction(logger, req, action, entityType, entityId, description) {
+const logger = new common_1.Logger('SuperAdmin');
+function logUserAction(activityLog, req, action, entityType, entityId, description) {
     const user = req.user;
-    logger.log({ userId: user.id, userName: user.email, action, entityType, entityId, description }).catch(() => { });
+    activityLog.log({ userId: user.id, userName: user.email, action, entityType, entityId, description })
+        .catch((err) => logger.error(`Failed to log activity: ${action} ${entityType}`, err));
 }
 let SuperAdminController = class SuperAdminController {
     constructor(service, activityLog) {
@@ -31,8 +33,8 @@ let SuperAdminController = class SuperAdminController {
     getDashboard() {
         return this.service.getDashboard();
     }
-    getAdminTenants() {
-        return this.service.getAdminTenants();
+    getAdminTenants(page, limit) {
+        return this.service.getAdminTenants(page ? +page : 1, limit ? +limit : 50);
     }
     async createAdminTenant(req, body) {
         const result = await this.service.createAdminTenant(body);
@@ -49,8 +51,8 @@ let SuperAdminController = class SuperAdminController {
         logUserAction(this.activityLog, req, 'delete', 'admin_tenant', +id, `Eliminó admin tenant ID ${id}`);
         return { message: 'Deleted' };
     }
-    getFreelancers() {
-        return this.service.getFreelancers();
+    getFreelancers(page, limit) {
+        return this.service.getFreelancers(page ? +page : 1, limit ? +limit : 50);
     }
     async createFreelancer(req, body) {
         const result = await this.service.createFreelancer(body);
@@ -77,8 +79,10 @@ __decorate([
 ], SuperAdminController.prototype, "getDashboard", null);
 __decorate([
     (0, common_1.Get)('admin-tenants'),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "getAdminTenants", null);
 __decorate([
@@ -108,8 +112,10 @@ __decorate([
 ], SuperAdminController.prototype, "deleteAdminTenant", null);
 __decorate([
     (0, common_1.Get)('freelancers'),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "getFreelancers", null);
 __decorate([

@@ -12,29 +12,38 @@ export declare class SuperAdminController {
         };
         recentUsers: import("../users/user.entity").User[];
     }>;
-    getAdminTenants(): Promise<import("../users/user.entity").User[]>;
+    getAdminTenants(page?: string, limit?: string): Promise<{
+        data: import("../users/user.entity").User[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     createAdminTenant(req: any, body: {
         name: string;
         email: string;
-        password: string;
         phone?: string;
         tenantId?: number;
     }): Promise<import("../users/user.entity").User>;
     updateAdminTenant(req: any, id: string, body: {
         name?: string;
         email?: string;
-        password?: string;
         phone?: string;
         tenantId?: number;
     }): Promise<import("../users/user.entity").User>;
     deleteAdminTenant(req: any, id: string): Promise<{
         message: string;
     }>;
-    getFreelancers(): Promise<import("../users/user.entity").User[]>;
+    getFreelancers(page?: string, limit?: string): Promise<{
+        data: import("../users/user.entity").User[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     createFreelancer(req: any, body: {
         name: string;
         email: string;
-        password: string;
         phone?: string;
         country?: string;
         documentId?: string;

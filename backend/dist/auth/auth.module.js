@@ -10,11 +10,14 @@ exports.AuthModule = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const passport_1 = require("@nestjs/passport");
+const typeorm_1 = require("@nestjs/typeorm");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 const jwt_strategy_1 = require("./jwt.strategy");
 const users_module_1 = require("../users/users.module");
 const session_logs_module_1 = require("../session-logs/session-logs.module");
+const email_module_1 = require("../email/email.module");
+const user_entity_1 = require("../users/user.entity");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -23,9 +26,11 @@ exports.AuthModule = AuthModule = __decorate([
         imports: [
             users_module_1.UsersModule,
             session_logs_module_1.SessionLogsModule,
+            email_module_1.EmailModule,
             passport_1.PassportModule,
+            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User]),
             jwt_1.JwtModule.register({
-                secret: process.env.JWT_SECRET || 'spectra_jwt_secret_key_2024',
+                secret: process.env.JWT_SECRET,
                 signOptions: { expiresIn: process.env.JWT_EXPIRATION || '24h' },
             }),
         ],

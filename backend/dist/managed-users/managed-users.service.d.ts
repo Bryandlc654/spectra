@@ -5,7 +5,13 @@ import { UpdateManagedUserDto } from './dto/update-managed-user.dto';
 export declare class ManagedUsersService {
     private repo;
     constructor(repo: Repository<ManagedUser>);
-    findAll(): Promise<ManagedUser[]>;
+    findAll(page?: number, limit?: number): Promise<{
+        data: ManagedUser[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     findById(id: number): Promise<ManagedUser>;
     findByEmail(email: string): Promise<ManagedUser | null>;
     create(dto: CreateManagedUserDto): Promise<ManagedUser>;

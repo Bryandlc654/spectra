@@ -26,10 +26,6 @@ let EmailController = class EmailController {
         await this.emailService.sendCredentials(body.to || 'test@example.com', 'Test', 'TestPassword123!');
         return { message: 'Test email sent' };
     }
-    async refresh() {
-        await this.emailService.refreshConfig();
-        return { message: 'SMTP config refreshed' };
-    }
 };
 exports.EmailController = EmailController;
 __decorate([
@@ -39,12 +35,6 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], EmailController.prototype, "test", null);
-__decorate([
-    (0, common_1.Post)('refresh'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], EmailController.prototype, "refresh", null);
 exports.EmailController = EmailController = __decorate([
     (0, common_1.Controller)('email'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

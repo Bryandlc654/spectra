@@ -23,6 +23,8 @@ export declare class User {
     tenant: Tenant;
     tenantId: number;
     isActive: boolean;
+    invitationToken: string;
+    invitationExpires: Date;
     createdAt: Date;
     updatedAt: Date;
 }

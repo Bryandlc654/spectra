@@ -47,9 +47,23 @@ let SettingsService = class SettingsService {
         return this.repo.save(setting);
     }
     async setBulk(entries) {
+        if (entries.length === 0)
+            return this.findAll();
+        const keys = entries.map((e) => e.key);
+        const existing = await this.repo.find({ where: keys.map((k) => ({ key: k })) });
+        const existingMap = new Map(existing.map((s) => [s.key, s]));
+        const toSave = [];
         for (const entry of entries) {
-            await this.set(entry.key, entry.value);
+            const found = existingMap.get(entry.key);
+            if (found) {
+                found.value = entry.value;
+                toSave.push(found);
+            }
+            else {
+                toSave.push(this.repo.create(entry));
+            }
         }
+        await this.repo.save(toSave);
         return this.findAll();
     }
     async remove(key) {

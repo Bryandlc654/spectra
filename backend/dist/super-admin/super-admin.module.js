@@ -8,6 +8,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SuperAdminModule = void 0;
 const common_1 = require("@nestjs/common");
+const jwt_1 = require("@nestjs/jwt");
 const typeorm_1 = require("@nestjs/typeorm");
 const super_admin_controller_1 = require("./super-admin.controller");
 const super_admin_service_1 = require("./super-admin.service");
@@ -21,7 +22,17 @@ let SuperAdminModule = class SuperAdminModule {
 exports.SuperAdminModule = SuperAdminModule;
 exports.SuperAdminModule = SuperAdminModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([user_entity_1.User]), email_module_1.EmailModule, tenants_module_1.TenantsModule, activity_logs_module_1.ActivityLogsModule, kyc_module_1.KycModule],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User]),
+            email_module_1.EmailModule,
+            tenants_module_1.TenantsModule,
+            activity_logs_module_1.ActivityLogsModule,
+            kyc_module_1.KycModule,
+            jwt_1.JwtModule.register({
+                secret: process.env.JWT_SECRET,
+                signOptions: { expiresIn: '7d' },
+            }),
+        ],
         controllers: [super_admin_controller_1.SuperAdminController],
         providers: [super_admin_service_1.SuperAdminService],
     })

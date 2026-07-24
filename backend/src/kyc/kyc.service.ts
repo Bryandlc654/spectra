@@ -18,7 +18,7 @@ export class KycService {
     if (status) where.status = status;
     const [data, total] = await this.repo.findAndCount({
       where,
-      relations: ['documents'],
+      relations: ['documents', 'user'],
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -27,7 +27,7 @@ export class KycService {
   }
 
   async findById(id: number) {
-    const req = await this.repo.findOne({ where: { id }, relations: ['documents'] });
+    const req = await this.repo.findOne({ where: { id }, relations: ['documents', 'user'] });
     if (!req) throw new NotFoundException('KYC request not found');
     return req;
   }
@@ -65,6 +65,12 @@ export class KycService {
     req.status = KycStatus.REJECTED;
     req.adminNotes = adminNotes;
     return this.repo.save(req);
+  }
+
+  async remove(id: number) {
+    const req = await this.findById(id);
+    await this.docRepo.delete({ kycRequestId: id });
+    return this.repo.remove(req);
   }
 
   async getStats() {

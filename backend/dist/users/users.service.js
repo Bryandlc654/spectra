@@ -21,8 +21,13 @@ let UsersService = class UsersService {
     constructor(usersRepository) {
         this.usersRepository = usersRepository;
     }
-    async findAll() {
-        return this.usersRepository.find({ order: { createdAt: 'DESC' }, take: 200 });
+    async findAll(page = 1, limit = 50) {
+        const [data, total] = await this.usersRepository.findAndCount({
+            order: { createdAt: 'DESC' },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+        return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
     }
     async findById(id) {
         return this.usersRepository.findOne({ where: { id } });
@@ -40,6 +45,9 @@ let UsersService = class UsersService {
             throw new common_1.NotFoundException('User not found');
         Object.assign(user, dto);
         return this.usersRepository.save(user);
+    }
+    async updatePassword(id, hashedPassword) {
+        await this.usersRepository.update(id, { password: hashedPassword });
     }
     async remove(id) {
         const user = await this.findById(id);

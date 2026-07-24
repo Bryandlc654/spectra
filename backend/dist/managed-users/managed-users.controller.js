@@ -24,7 +24,9 @@ let ManagedUsersController = class ManagedUsersController {
     constructor(service) {
         this.service = service;
     }
-    findAll() { return this.service.findAll(); }
+    findAll(page, limit) {
+        return this.service.findAll(page ? +page : 1, limit ? +limit : 50);
+    }
     findOne(id) { return this.service.findById(+id); }
     create(dto) { return this.service.create(dto); }
     update(id, dto) { return this.service.update(+id, dto); }
@@ -33,8 +35,10 @@ let ManagedUsersController = class ManagedUsersController {
 exports.ManagedUsersController = ManagedUsersController;
 __decorate([
     (0, common_1.Get)(),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], ManagedUsersController.prototype, "findAll", null);
 __decorate([

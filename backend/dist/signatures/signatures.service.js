@@ -44,6 +44,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var SignaturesService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SignaturesService = void 0;
 const common_1 = require("@nestjs/common");
@@ -53,11 +54,12 @@ const crypto = __importStar(require("crypto"));
 const sign_document_entity_1 = require("./sign-document.entity");
 const signer_entity_1 = require("./signer.entity");
 const email_service_1 = require("../email/email.service");
-let SignaturesService = class SignaturesService {
+let SignaturesService = SignaturesService_1 = class SignaturesService {
     constructor(docRepo, signerRepo, emailService) {
         this.docRepo = docRepo;
         this.signerRepo = signerRepo;
         this.emailService = emailService;
+        this.logger = new common_1.Logger(SignaturesService_1.name);
     }
     async findAll(ownerUserId) {
         const where = {};
@@ -184,7 +186,7 @@ let SignaturesService = class SignaturesService {
               <p style="color:#9ca3af;font-size:12px;">Ya puedes descargar el certificado desde la plataforma.</p>
             </div>
           </div>`;
-                await this.emailService.sendRaw(s.email, `Documento firmado: ${doc.title}`, html).catch(() => { });
+                await this.emailService.sendRaw(s.email, `Documento firmado: ${doc.title}`, html).catch((err) => this.logger.error(`Failed to send completion email to ${s.email}`, err));
             }
         }
         else {
@@ -205,7 +207,7 @@ let SignaturesService = class SignaturesService {
               <a href="${link}" style="display:block;background:#006d70;color:#fff;text-decoration:none;text-align:center;padding:14px;border-radius:10px;font-size:15px;font-weight:600;margin:20px 0;">Ir a firmar</a>
             </div>
           </div>`;
-                await this.emailService.sendRaw(nextSigner.email, `Turno de firma: ${doc.title}`, html).catch(() => { });
+                await this.emailService.sendRaw(nextSigner.email, `Turno de firma: ${doc.title}`, html).catch((err) => this.logger.error(`Failed to send signing email to ${nextSigner.email}`, err));
             }
         }
         return { message: 'Document signed', allSigned };
@@ -241,7 +243,7 @@ let SignaturesService = class SignaturesService {
     }
 };
 exports.SignaturesService = SignaturesService;
-exports.SignaturesService = SignaturesService = __decorate([
+exports.SignaturesService = SignaturesService = SignaturesService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(sign_document_entity_1.SignDocument)),
     __param(1, (0, typeorm_1.InjectRepository)(signer_entity_1.Signer)),

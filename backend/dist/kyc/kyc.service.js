@@ -29,7 +29,7 @@ let KycService = class KycService {
             where.status = status;
         const [data, total] = await this.repo.findAndCount({
             where,
-            relations: ['documents'],
+            relations: ['documents', 'user'],
             order: { createdAt: 'DESC' },
             skip: (page - 1) * limit,
             take: limit,
@@ -37,7 +37,7 @@ let KycService = class KycService {
         return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
     }
     async findById(id) {
-        const req = await this.repo.findOne({ where: { id }, relations: ['documents'] });
+        const req = await this.repo.findOne({ where: { id }, relations: ['documents', 'user'] });
         if (!req)
             throw new common_1.NotFoundException('KYC request not found');
         return req;
@@ -72,6 +72,11 @@ let KycService = class KycService {
         req.status = kyc_request_entity_1.KycStatus.REJECTED;
         req.adminNotes = adminNotes;
         return this.repo.save(req);
+    }
+    async remove(id) {
+        const req = await this.findById(id);
+        await this.docRepo.delete({ kycRequestId: id });
+        return this.repo.remove(req);
     }
     async getStats() {
         const pending = await this.repo.count({ where: { status: kyc_request_entity_1.KycStatus.PENDING } });

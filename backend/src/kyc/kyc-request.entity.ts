@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { KycDocument } from './kyc-document.entity';
+import { User } from '../users/user.entity';
 
 export enum KycStatus {
   PENDING = 'pending',
@@ -28,6 +29,10 @@ export class KycRequest {
 
   @OneToMany(() => KycDocument, (doc) => doc.kycRequest, { cascade: true })
   documents: KycDocument[];
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @CreateDateColumn()
   createdAt: Date;

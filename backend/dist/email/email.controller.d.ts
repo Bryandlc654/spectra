@@ -7,7 +7,4 @@ export declare class EmailController {
     }): Promise<{
         message: string;
     }>;
-    refresh(): Promise<{
-        message: string;
-    }>;
 }

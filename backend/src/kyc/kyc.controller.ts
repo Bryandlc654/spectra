@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Param, Body, Query, UseGuards, UseInterceptors,
+  Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, UseInterceptors,
   UploadedFile, ParseIntPipe, BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -86,5 +86,12 @@ export class KycController {
   @Roles('super_admin')
   reject(@Param('id') id: string, @Body() dto: RejectKycDto) {
     return this.service.reject(+id, dto.adminNotes);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin')
+  remove(@Param('id') id: string) {
+    return this.service.remove(+id);
   }
 }

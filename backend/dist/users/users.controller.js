@@ -23,8 +23,8 @@ let UsersController = class UsersController {
     constructor(usersService) {
         this.usersService = usersService;
     }
-    findAll() {
-        return this.usersService.findAll();
+    findAll(page, limit) {
+        return this.usersService.findAll(page ? +page : 1, limit ? +limit : 50);
     }
     findOne(id) {
         return this.usersService.findById(+id);
@@ -40,8 +40,10 @@ exports.UsersController = UsersController;
 __decorate([
     (0, common_1.Get)(),
     (0, roles_decorator_1.Roles)('super_admin'),
+    __param(0, (0, common_1.Query)('page')),
+    __param(1, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], UsersController.prototype, "findAll", null);
 __decorate([

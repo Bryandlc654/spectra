@@ -1,3 +1,4 @@
+import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { EmailService } from '../email/email.service';
@@ -8,7 +9,8 @@ export declare class SuperAdminService {
     private emailService;
     private tenantsService;
     private kycService;
-    constructor(usersRepository: Repository<User>, emailService: EmailService, tenantsService: TenantsService, kycService: KycService);
+    private jwtService;
+    constructor(usersRepository: Repository<User>, emailService: EmailService, tenantsService: TenantsService, kycService: KycService, jwtService: JwtService);
     getDashboard(): Promise<{
         stats: {
             totalUsers: number;
@@ -17,27 +19,36 @@ export declare class SuperAdminService {
         };
         recentUsers: User[];
     }>;
-    getAdminTenants(): Promise<User[]>;
+    getAdminTenants(page?: number, limit?: number): Promise<{
+        data: User[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     createAdminTenant(data: {
         name: string;
         email: string;
-        password: string;
         phone?: string;
         tenantId?: number;
     }): Promise<User>;
     updateAdminTenant(id: number, data: {
         name?: string;
         email?: string;
-        password?: string;
         phone?: string;
         tenantId?: number;
     }): Promise<User>;
     deleteAdminTenant(id: number): Promise<User>;
-    getFreelancers(): Promise<User[]>;
+    getFreelancers(page?: number, limit?: number): Promise<{
+        data: User[];
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    }>;
     createFreelancer(data: {
         name: string;
         email: string;
-        password: string;
         phone?: string;
         country?: string;
         documentId?: string;

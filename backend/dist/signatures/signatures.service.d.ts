@@ -6,6 +6,7 @@ export declare class SignaturesService {
     private docRepo;
     private signerRepo;
     private emailService;
+    private readonly logger;
     constructor(docRepo: Repository<SignDocument>, signerRepo: Repository<Signer>, emailService: EmailService);
     findAll(ownerUserId?: number): Promise<SignDocument[]>;
     findById(id: number): Promise<SignDocument>;

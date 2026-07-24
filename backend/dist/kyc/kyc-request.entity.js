@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.KycRequest = exports.KycStatus = void 0;
 const typeorm_1 = require("typeorm");
 const kyc_document_entity_1 = require("./kyc-document.entity");
+const user_entity_1 = require("../users/user.entity");
 var KycStatus;
 (function (KycStatus) {
     KycStatus["PENDING"] = "pending";
@@ -45,6 +46,11 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => kyc_document_entity_1.KycDocument, (doc) => doc.kycRequest, { cascade: true }),
     __metadata("design:type", Array)
 ], KycRequest.prototype, "documents", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'userId' }),
+    __metadata("design:type", user_entity_1.User)
+], KycRequest.prototype, "user", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)

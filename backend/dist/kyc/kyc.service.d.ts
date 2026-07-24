@@ -18,6 +18,7 @@ export declare class KycService {
     addDocument(kycRequestId: number, type: string, file: Express.Multer.File): Promise<KycDocument>;
     approve(id: number): Promise<KycRequest>;
     reject(id: number, adminNotes: string): Promise<KycRequest>;
+    remove(id: number): Promise<KycRequest>;
     getStats(): Promise<{
         pending: number;
         approved: number;

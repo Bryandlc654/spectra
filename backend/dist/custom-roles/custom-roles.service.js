@@ -48,9 +48,26 @@ let CustomRolesService = class CustomRolesService {
         Object.assign(role, rest);
         await this.repo.save(role);
         if (permissions) {
-            await this.permRepo.delete({ roleId: id });
-            const perms = permissions.map((p) => this.permRepo.create({ ...p, roleId: id }));
-            await this.permRepo.save(perms);
+            const currentPerms = role.permissions;
+            const currentMap = new Map(currentPerms.map((p) => [p.moduleKey, p]));
+            for (const p of permissions) {
+                const existing = currentMap.get(p.moduleKey);
+                if (existing) {
+                    if (existing.canAccess !== p.canAccess) {
+                        existing.canAccess = p.canAccess;
+                        await this.permRepo.save(existing);
+                    }
+                }
+                else {
+                    await this.permRepo.save(this.permRepo.create({ ...p, roleId: id }));
+                }
+            }
+            const newKeys = new Set(permissions.map((p) => p.moduleKey));
+            for (const perm of currentPerms) {
+                if (!newKeys.has(perm.moduleKey)) {
+                    await this.permRepo.remove(perm);
+                }
+            }
         }
         return this.findById(id);
     }

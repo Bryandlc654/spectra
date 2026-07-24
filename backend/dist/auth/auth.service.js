@@ -41,6 +41,9 @@ var __importStar = (this && this.__importStar) || (function () {
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
@@ -48,10 +51,14 @@ const jwt_1 = require("@nestjs/jwt");
 const bcrypt = __importStar(require("bcryptjs"));
 const users_service_1 = require("../users/users.service");
 const user_entity_1 = require("../users/user.entity");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
+const user_entity_2 = require("../users/user.entity");
 let AuthService = class AuthService {
-    constructor(usersService, jwtService) {
+    constructor(usersService, jwtService, usersRepository) {
         this.usersService = usersService;
         this.jwtService = jwtService;
+        this.usersRepository = usersRepository;
     }
     async register(dto) {
         const existing = await this.usersService.findByEmail(dto.email);
@@ -76,6 +83,70 @@ let AuthService = class AuthService {
             throw new common_1.UnauthorizedException('Account is inactive');
         return this.generateToken(user);
     }
+    async forgotPassword(email) {
+        const user = await this.usersService.findByEmail(email);
+        if (!user) {
+            return { message: 'Si el email existe, recibirás un enlace de recuperación' };
+        }
+        const resetToken = this.jwtService.sign({ sub: user.id, email: user.email, type: 'password_reset' }, { expiresIn: '1h' });
+        const appUrl = process.env.APP_URL || 'http://localhost:5173';
+        const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
+        return {
+            message: 'Si el email existe, recibirás un enlace de recuperación',
+            resetUrl,
+            userName: user.name,
+            userEmail: user.email,
+        };
+    }
+    async resetPassword(token, newPassword) {
+        try {
+            const payload = this.jwtService.verify(token);
+            if (payload.type !== 'password_reset') {
+                throw new common_1.BadRequestException('Token inválido');
+            }
+            const user = await this.usersService.findById(payload.sub);
+            if (!user) {
+                throw new common_1.BadRequestException('Usuario no encontrado');
+            }
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            await this.usersService.updatePassword(user.id, hashedPassword);
+            return { message: 'Contraseña actualizada correctamente' };
+        }
+        catch (err) {
+            if (err instanceof common_1.BadRequestException)
+                throw err;
+            throw new common_1.BadRequestException('Token inválido o expirado');
+        }
+    }
+    async acceptInvitation(token, newPassword) {
+        try {
+            const payload = this.jwtService.verify(token);
+            if (payload.type !== 'admin_invitation') {
+                throw new common_1.BadRequestException('Token inválido');
+            }
+            const user = await this.usersService.findByEmail(payload.email);
+            if (!user) {
+                throw new common_1.BadRequestException('Usuario no encontrado');
+            }
+            if (!user.invitationToken) {
+                throw new common_1.BadRequestException('Invitación ya fue aceptada');
+            }
+            if (user.invitationExpires && new Date(user.invitationExpires) < new Date()) {
+                throw new common_1.BadRequestException('Invitación expirada');
+            }
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            user.password = hashedPassword;
+            user.invitationToken = null;
+            user.invitationExpires = null;
+            await this.usersRepository.save(user);
+            return { message: 'Contraseña creada correctamente. Ya puedes iniciar sesión.' };
+        }
+        catch (err) {
+            if (err instanceof common_1.BadRequestException)
+                throw err;
+            throw new common_1.BadRequestException('Token inválido o expirado');
+        }
+    }
     generateToken(user) {
         const payload = { sub: user.id, email: user.email, role: user.role };
         return {
@@ -93,7 +164,9 @@ let AuthService = class AuthService {
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
+    __param(2, (0, typeorm_1.InjectRepository)(user_entity_2.User)),
     __metadata("design:paramtypes", [users_service_1.UsersService,
-        jwt_1.JwtService])
+        jwt_1.JwtService,
+        typeorm_2.Repository])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map
