@@ -24,6 +24,7 @@ export default function KycReview() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<KycRequest | null>(null);
 
   const load = async () => {
     setFetching(true); setError(null);
@@ -66,11 +67,10 @@ export default function KycReview() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Eliminar esta solicitud KYC y todos sus documentos?')) return;
     setLoading(true); setError(null);
     try {
       await api.delete(`/kyc/${id}`);
-      setReviewing(null); await load();
+      setDeleting(null); setReviewing(null); await load();
     } catch {
       setError('Error al eliminar la solicitud');
     } finally { setLoading(false); }
@@ -202,7 +202,7 @@ export default function KycReview() {
                       Revisar
                     </button>
                   )}
-                  <button onClick={() => handleDelete(req.id)} disabled={loading}
+                  <button onClick={() => setDeleting(req)} disabled={loading}
                     className="ml-2 shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 border border-gray-100 hover:border-red-200 transition disabled:opacity-40"
                     title="Eliminar solicitud">
                     <HiOutlineTrash className="w-4 h-4" />
@@ -291,7 +291,7 @@ export default function KycReview() {
             </div>
 
             <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
-              <button onClick={() => { handleDelete(reviewing.id); }}
+              <button onClick={() => setDeleting(reviewing)}
                 disabled={loading}
                 className="px-4 py-2.5 border border-gray-200 text-gray-500 rounded-xl text-sm font-medium hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition disabled:opacity-40 flex items-center gap-2">
                 <HiOutlineTrash className="w-4 h-4" />
@@ -307,6 +307,32 @@ export default function KycReview() {
                 disabled={loading}
                 className="px-6 py-2.5 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition disabled:opacity-60 shadow-lg shadow-green-200 flex items-center gap-2">
                 {loading ? 'Procesando...' : <><HiOutlineCheckCircle className="w-4 h-4" /> Aprobar</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleting && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setDeleting(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                <HiOutlineTrash className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Eliminar solicitud</h3>
+              <p className="text-sm text-gray-500">
+                Se eliminará la solicitud de <strong>{deleting.user?.name || 'este usuario'}</strong> y todos sus documentos adjuntos. Esta acción no se puede deshacer.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 p-6 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+              <button onClick={() => setDeleting(null)}
+                className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition">
+                Cancelar
+              </button>
+              <button onClick={() => handleDelete(deleting.id)} disabled={loading}
+                className="px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-medium hover:bg-red-600 transition disabled:opacity-60 shadow-lg shadow-red-200 flex items-center gap-2">
+                {loading ? 'Eliminando...' : <><HiOutlineTrash className="w-4 h-4" /> Eliminar</>}
               </button>
             </div>
           </div>
